@@ -1,0 +1,6 @@
+If (select COUNT('a') from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher código de imposto na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '')))
+	GOTO End_Of_Block
+END

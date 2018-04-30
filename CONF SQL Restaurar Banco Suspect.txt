@@ -1,0 +1,19 @@
+USE Master
+GO
+-- Coloca o database em modo de emergência
+ALTER DATABASE MeuBanco SET EMERGENCY
+GO
+-- Realiza um check do database
+DBCC CHECKDB('MeuBanco')
+GO
+-- Altera o database para SINGLE_USER, ou seja, só um usuário pode estar conectado
+ALTER DATABASE MeuBanco SET SINGLE_USER WITH ROLLBACK IMMEDIATE
+GO
+-- Realiza o comando para reparo do database
+DBCC CHECKDB('MeuBanco', REPAIR_ALLOW_DATA_LOSS) WITH NO_INFOMSGS, ALL_ERRORMSGS
+GO
+-- Volta a base de dados para multiplos usuários
+ALTER DATABASE MeuBanco SET MULTI_USER
+GO
+-- Restarta o status do database
+EXEC sp_resetstatus 'MeuBanco'

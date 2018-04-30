@@ -1,0 +1,8 @@
+Select 
+	* 
+from 
+	CUFD T0
+	INNER JOIN UFD1 T1 on T0.TableID = T1.TableID and T0.FieldID = T1.FieldID
+where 
+	T0.TableID = '@ADD_BOLETO' and 
+	T0.AliasID = 'Origem'

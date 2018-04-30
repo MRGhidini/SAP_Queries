@@ -1,0 +1,21 @@
+-- NOME FANTASIA
+IF (SELECT LEN(T0.CardFName) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) > 60
+BEGIN
+	SET @error = 1
+	SET @error_message = 'O campo Nome Fantasia do parceiro de negócio (PN) permite no máximo 60 caracteres.'
+	GOTO End_Of_Block
+END
+
+IF CONVERT(varbinary(100),upper((select top 1 T0.CardName from OCRD T0 where T0.CardCode = @list_of_cols_val_tab_del))) <> CONVERT(varbinary(100),(select top 1 T0.CardName from OCRD T0 where T0.CardCode = @list_of_cols_val_tab_del))
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Somente permitidas letras maiúsculas no campo Razão Social.'
+	GOTO End_Of_Block
+END
+
+IF CONVERT(varbinary(100),upper((select top 1 T0.CardFName from OCRD T0 where T0.CardCode = @list_of_cols_val_tab_del))) <> CONVERT(varbinary(100),(select top 1 T0.CardFName from OCRD T0 where T0.CardCode = @list_of_cols_val_tab_del))
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Somente permitidas letras maiúsculas no campo Nome Fantasia.'
+	GOTO End_Of_Block
+END

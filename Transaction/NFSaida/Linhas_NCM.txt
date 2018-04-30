@@ -1,0 +1,7 @@
+--------- Validação NCM no Cadastro --------------------
+If (select COUNT('a') from INV1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and T1.NcmCode < 0) > 0
+Begin
+	SET @error = 1
+	SET @error_message = 'Item ' +(Select top 1 T0.ItemCode from INV1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and T1.NcmCode < 0)  + ' Não Possuí NCM de Venda cadastrado. Favor arrumar o cadastro.'
+	GOTO End_Of_Block
+End

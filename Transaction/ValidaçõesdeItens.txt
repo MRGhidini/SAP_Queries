@@ -1,0 +1,193 @@
+------------------------------------- INÍCIO VALIDA CADASTRO DE ITENS --------------------------------------
+
+IF (@object_type = '4' AND @transaction_type <> 'D')
+BEGIN
+
+IF (SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND isnull(T0.ItemName,'') = '') > 0 
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Favor digitar a descrição do item.'
+	GOTO End_Of_Block
+END
+
+---------- ABA GERAL ----------
+-- BLOQUEIO PARA O PREENCHIMENTO DO CAMPO TIPO DO MATERIAL
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.ItemClass = 2 AND ISNULL(T0.MatType,0) <> 1 AND ISNULL(T0.MatType,0) <> 0 AND ISNULL(T0.MatType,0) <> 3 AND ISNULL(T0.MatType,0) <> 7 AND ISNULL(T0.MatType,0) <> 8 AND ISNULL(T0.MatType,0) <> 9 AND ISNULL(T0.MatType,0) <> 10 AND ISNULL(T0.MatType,0) <> 99) > 0 
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Tipo do material deve ser 0-Mercadorias p/ revenda, 1-Produtos Acabados, 3-Matéria-prima, 7-Mat. uso e consumo, 8-Ativo Imobil., 9-Serviços, 10-Outros Insumos, 99-Outras'
+	GOTO End_Of_Block
+END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO CAMPO FONTE DO PRODUTO
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.ItemClass = 2 AND ISNULL(T0.ProductSrc,0) = 0) > 0 
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Fonte do Produto deve ser informado'
+	GOTO End_Of_Block
+END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO CAMPO TIPO DO MATERIAL PRODUTO ACABADO E PRODUÇÃO PROPRIA
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.ItemClass = 2 AND ISNULL(T0.MatType,0) <> 1 AND ISNULL(T0.ProductSrc,0) = 4 AND ISNULL(T0.MatType,0) <> 1) > 0 
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Quando a Fonte do Produto é Produção Própria, Tipo de Material deve ser 1-Produtos acabados'
+	GOTO End_Of_Block
+END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO NCM
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.ItemClass = 2 AND T0.NCMCode = -1) > 0 
+BEGIN
+	SET @error = 1
+	SET @error_message = 'NCM em Branco.'
+	GOTO End_Of_Block
+END
+
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO GRUPO DE MATERIAIS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.ItemClass = 2 AND T0.MatGrp = -1) > 0 
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Grupo de material em branco.'
+	GOTO End_Of_Block
+END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO GRUPO DE SERVIÇO
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.ItemClass = 1 AND ISNULL(T0.ServiceGrp, '') = '') > 0 
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Grupo de serviço em branco.'
+	GOTO End_Of_Block
+END
+
+
+---------- ABA VENDAS ----------
+-- BLOQUEIO PARA O PREENCHIMENTO DA UNIDADE DE MEDIDA DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.SellItem = 'Y' and ISNULL(T0.SalUnitMsr,'') = '' AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Unidade de Medida de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+
+---------- ABA COMPRAS ----------
+-- BLOQUEIO PARA O PREENCHIMENTO DA UNIDADE DE MEDIDA DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.PrchseItem = 'Y' and ISNULL(T0.BuyUnitMsr,'') = '' AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Unidade de Medida de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+
+
+/*
+-- BLOQUEIO PARA O PREENCHIMENTO DO COMPRIMENTO DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.BLength1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Comprimento de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DA LARGURA DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.BWidth1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Largura de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DA ALTURA DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.BHeight1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Altura de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO VOLUME DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.BVolume,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Volume de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO PESO DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(BWeight1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Peso de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+---------- ABA VENDAS ----------
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO COMPRIMENTO DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.SLength1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Comprimento de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DA LARGURA DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.SWidth1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Largura de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DA ALTURA DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.SHeight1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Altura de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO VOLUME DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.SVolume,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Volume de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO PESO DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(SWeight1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Peso de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+---------- ABA ESTOQUE ----------
+*/
+-- BLOQUEIO PARA O PREENCHIMENTO DO FLAG ADMINISTRAR INVENTÁRIO POR DEPÓSITO
+  IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.InvntItem = 'Y' AND T0.ByWh = 'N') > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Selecione a opção "Administrar inventário por depósito" na aba inventário.'
+        GOTO End_Of_Block
+  END
+
+  IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ((isnull(T0.InvntItem,'') = 'Y' AND T0.GLMethod = 'C') or (isnull(T0.InvntItem,'') = 'N' AND T0.GLMethod = 'W')) ) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Se Item de Estoque, selecione a opção "Definir contas contábeis por Depósito ou Nível do Item". Senão, selecione por Grupo de Itens'
+        GOTO End_Of_Block
+  END
+
+  IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND (T0.InvntItem = 'Y' AND T0.EvalSystem <> 'A')) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Se Item de Estoque, o método de avaliação deve ser "Preço médio móvel"'
+        GOTO End_Of_Block
+  END
+
+END
+
+------------------------------------- FIM VALIDA CADASTRO DE ITENS --------------------------------------

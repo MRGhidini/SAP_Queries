@@ -1,0 +1,39 @@
+------------------------------------- Início VALIDA Pedido de Compra --------------------------------------
+IF(@object_type = '22')
+BEGIN
+IF (select COUNT('a') from OPOR T0 where T0.DocEntry = @list_of_cols_val_tab_del and ISNULL(T0.U_TIPOOP,'') = '') > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Preencher o Tipo de Operação.'
+    GOTO End_Of_Block
+ END
+ IF (select COUNT('a') from POR12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and (isnull(T0.TaxId0,'') = '' and isnull(T0.TaxId4,'') = '') and isnull(T0.CountryB,'') = 'BR') > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Preencher o CNPJ/CPF na Aba Impostos->Identific. fiscais.'
+    GOTO End_Of_Block
+ END
+ IF (select COUNT('a') from POR12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and (isnull(T0.TaxId0,'') <> '' and isnull(T0.TaxId1,'') = '') and isnull(T0.CountryB,'') = 'BR') > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Necessário preenchimento da Inscrição Estadual. Caso não possua, é necessário que seja preenchido com Isento.'
+    GOTO End_Of_Block
+ END
+ 
+ If (SELECT count('a') FROM OPOR T1, POR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.OcrCode,'') = '') > 0 
+ begin
+  SET @ERROR = 1
+  SET @ERROR_MESSAGE = 'Preencher centro de custo na Linha: ' + (SELECT ltrim(str(min(isnull(T0.VisOrder,0)+1))) FROM OPOR T1, POR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.OcrCode,'') = '')
+  GOTO End_Of_Block
+ end
+
+ If (SELECT count('a') FROM OPOR T1, POR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.Project,'') = '') > 0 
+ begin
+  SET @ERROR = 1
+  SET @ERROR_MESSAGE = 'Preencher código do projeto na Linha: ' + (SELECT ltrim(str(min(isnull(T0.VisOrder,0)+1))) FROM OPOR T1, POR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.Project,'') = '')
+  GOTO End_Of_Block
+ end
+ 
+END
+
+------------------------------------- FIM VALIDA Pedido de Compra --------------------------------------

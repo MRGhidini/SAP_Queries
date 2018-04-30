@@ -1,0 +1,25 @@
+---------------- Validação todos CST ---------------------------
+If (select COUNT('a') from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTCode,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher CST ICMS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTCode,'') = '')))
+	GOTO End_Of_Block
+END
+If (select COUNT('a') from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfPIS,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher CST PIS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfPIS,'') = '')))
+	GOTO End_Of_Block
+END
+If (select COUNT('a') from INV1 T0, INV4 T1, OSTT T2 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfCOFINS,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher CST COFINS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfCOFINS,'') = '')))
+	GOTO End_Of_Block
+END
+If (select COUNT('a') from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfIPI,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher CST IPI na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfIPI,'') = '')))
+	GOTO End_Of_Block
+END

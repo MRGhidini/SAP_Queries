@@ -1,0 +1,13 @@
+IF (select COUNT('a') from RDN12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and (isnull(T0.TaxId0,'') = '' and isnull(T0.TaxId4,'') = '') and isnull(T0.CountryS,'') = 'BR') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher o CNPJ/CPF na Aba Impostos->Identific. fiscais.'
+	GOTO End_Of_Block
+END
+
+IF (select COUNT('a') from RDN12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and (isnull(T0.TaxId0,'') <> '' and isnull(T0.TaxId1,'') = '') and isnull(T0.CountryS,'') = 'BR') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Necessário preenchimento da Inscrição Estadual. Caso não possua, é necessário que seja preenchido com Isento.'
+	GOTO End_Of_Block
+END

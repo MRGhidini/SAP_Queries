@@ -1,0 +1,6 @@
+IF(select COUNT('a') from ORDN T0 where T0.DocEntry = @list_of_cols_val_tab_del AND T0.Model IN(39,44) AND ISNULL(T0.U_chaveacesso,'') = '' AND T0.SeqCode = -2) > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Chave de Acesso em Branco.'
+	GOTO End_Of_Block
+END

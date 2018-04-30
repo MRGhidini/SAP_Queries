@@ -1,0 +1,22 @@
+-------- Bloqueio de Código de Imposto, CST para ICMS, PIS, COFINS ------------
+IF(@object_type ='4' AND @transaction_type <> 'D')
+BEGIN
+ IF (SELECT COUNT(*) FROM OITM T0 WHERE ISNULL(T0.U_SKILL_CSTICMS,'')='' AND T0.ItemClass='2' AND T0.ItemCode=@list_of_cols_val_tab_del) > 0 
+ BEGIN
+  SET @ERROR = 1
+  SET @ERROR_MESSAGE = 'Favor, preencher o campo "CST de ICMS - Estoque".'
+  GOTO End_Of_Block
+ END
+END
+
+IF(@object_type ='4' AND @transaction_type <> 'D')
+BEGIN
+ IF (SELECT COUNT(*) FROM OITM T0 WHERE ISNULL(T0.U_AliqIntICMS,'')='' AND T0.ItemClass='2' AND T0.ItemCode=@list_of_cols_val_tab_del) > 0 
+ BEGIN
+  SET @ERROR = 1
+  SET @ERROR_MESSAGE = 'Favor, preencher o campo "Alíquota ICMS Oper. Interna".'
+  GOTO End_Of_Block
+ END
+END
+
+-------- Fim Bloqueio de Código de Imposto, CST para ICMS, PIS, COFINS ------------

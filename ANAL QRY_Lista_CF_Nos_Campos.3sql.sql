@@ -1,0 +1,1 @@
+select * from ouqr where QString like '%#SIG%'

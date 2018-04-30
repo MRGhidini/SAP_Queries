@@ -1,0 +1,56 @@
+USE [AddOne]
+GO
+
+/****** Object:  StoredProcedure [dbo].[EnvioEmailChecagem]    Script Date: 07/03/2013 15:24:10 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+Alter procedure [dbo].[EnvioEmailChecagem] as
+
+declare @Data datetime, @tableHTML  NVARCHAR(MAX), @Assunto nvarchar(100), @Emails nvarchar(254)
+
+set @Data = GETDATE()-1
+set @Assunto = 'Lista de envio de e-mails: '+convert(varchar(10),@Data,103)
+set @Emails = 'ezequiel.souza@granbio.com.br'
+
+If (select COUNT(*) from msdb.dbo.sysmail_allitems T0 where convert(varchar(10),T0.sent_date,112) = convert(varchar(10),@Data,112)) > 0
+begin
+
+ SET @tableHTML =
+	N'<H1><b>ESTE E-MAIL FOI ENVIADO DA BASE DE VALIDAÇÃO, CASO NÃO FAÇO PARTE DESSA ETAPA FAVOR DESCONSIDERAR </b></H1>' +
+    N'<H2>'+@Assunto+'</H2>' +
+    N'<table border="1">' +
+    N'<tr><th>E-mail</th><th>Horário</th><th>Status de envio</th>' +
+    N'<th>Conteúdo do e-mail</th></tr>' +
+    CAST ( ( SELECT td = T0.recipients,       '',
+                    td = convert(varchar(8),T0.sent_date,14),       '',
+                    td = T0.sent_status,       '',
+                 	td = replace(replace(replace(replace(replace(replace(replace(replace(replace(T0.body,'<H2>SAP-Solicitação de aprovação</H2><table border="1">',''),'</th>','-'),'<th>',''),'</td>','-'),'<td>',''),'<tr>',''),'</tr>',''),'<td/>',''),'</table>',''),       ''
+
+                 	FROM msdb.dbo.sysmail_allitems T0 where convert(varchar(10),T0.sent_date,112) = convert(varchar(10),@Data,112) and T0.recipients <> 'fernando.okamura@gweadded.com.br' order by T0.recipients, convert(varchar(11),T0.sent_date,14)
+                 	
+                 	FOR XML PATH('tr'), TYPE 
+    ) AS NVARCHAR(MAX) ) +  N'</table>' 
+    
+end
+else
+begin  
+ SET @tableHTML =
+    N'<H2>Não houve envio de emails em '+CONVERT(varchar(10),@Data,103)+'</H2>' 
+end
+/*
+EXEC msdb.dbo.sp_send_dbmail 
+    @profile_name = 'Granbio',
+    @recipients= @Emails,
+    @subject = @Assunto,
+    @body = @tableHTML,
+    @body_format = 'HTML'
+*/
+
+GO
+
+

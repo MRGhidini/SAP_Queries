@@ -1,0 +1,171 @@
+/*Select 1 from [dbo].[OINV] T0 where T0.DocDueDate between '[%0]' and '[%1]'*/
+/*SELECT 2 FROM [dbo].[OCRD] T1 WHERE T1.CardName = '[%2]'*/
+
+DECLARE @DATABASE DATETIME, @DATAINI DATETIME, @DATAFIM DATETIME, @FORNECEDOR NVARCHAR(100)
+SET @DATABASE = getdate()
+SET @DATAINI = '[%0]'
+SET @DATAFIM = '[%1]'
+SET @FORNECEDOR = '[%2]'
+
+
+SELECT 
+	T9.BPLName 'Filial',
+	MAX(T0.[ShortName]) CodigoFornecedor, 
+	MAX(T4.CardName) Fornecedor,
+	ISNULL((CASE max(T0.TransType)
+		WHEN 30 THEN 'LCM'
+		WHEN 13 THEN 'NF de Saida'
+		WHEN 14 THEN 'Dev. NF de Saida'
+		WHEN 15 THEN 'Entrega'
+		WHEN 16 THEN 'Devolução'
+		WHEN 18 THEN 'NF de Entrada'
+		WHEN 19 THEN 'Dev. NF de Entrada'
+		WHEN 20 THEN 'Recebimento de Mercadoria'
+		WHEN 21 THEN 'Devolução de Mercadoria'
+		WHEN 69 THEN 'Despesas de Importação'
+		WHEN 60 THEN 'Saída de Mercadoria'
+		WHEN 59 THEN 'Entrada de Mercadoria'
+		WHEN 46 THEN 'Contas a Pagar' 
+		WHEN 24 THEN 'Contas a Receber'
+		WHEN 162 THEN 'Reavaliação de Estoque'
+		WHEN 67 THEN 'Transferencia de Estoque'
+		WHEN 203 THEN 'Adiantamento a Cliente'
+		WHEN 204 THEN 'Adiantamento a Fornecedor'
+		END),'') TipoDoc, 
+	MAX(T0.[BaseRef]) NoDocSAP, 
+	MAX(T0.[LineMemo]) ObsNF, 
+	MAX(T0.[TaxDate]) DtDocumento, 
+	MAX(T0.[DueDate]) DtVencimento, 
+	MAX(T0.[BalDueCred]) + SUM(T1.[ReconSum]) Saldo,
+	MAX(T0.[Account]) Conta
+
+
+FROM  
+	[dbo].[JDT1] T0  
+	INNER  JOIN [dbo].[ITR1] T1  ON  T1.[TransId] = T0.[TransId]  AND  T1.[TransRowId] = T0.[Line_ID]   
+	INNER  JOIN [dbo].[OITR] T2  ON  T2.[ReconNum] = T1.[ReconNum]   
+	INNER  JOIN [dbo].[OJDT] T3  ON  T3.[TransId] = T0.[TransId]   
+	INNER  JOIN [dbo].[OCRD] T4  ON  T4.[CardCode] = T0.[ShortName]    
+	LEFT OUTER  JOIN [dbo].[B1_JournalTransSourceView] T5  ON  T5.[ObjType] = T0.[TransType]  AND  T5.[DocEntry] = T0.[CreatedBy]  AND  (T5.[TransType] <> 'I'  OR  (T5.[TransType] = 'I'  AND  T5.[InstlmntID] = T0.[SourceLine] ))  
+	Left Join OBPL T9 On T0.BPLId = T9.BPLId
+	
+WHERE 
+	T4.[CardType] = 'S'  
+	AND  T2.[ReconDate] > @DATABASE	
+	AND  T1.[IsCredit] = 'C' 
+	AND (T0.DueDate >= @DATAINI OR ISNULL(@DATAINI,'') = '') AND
+	(T0.DueDate <= @DATAFIM OR ISNULL(@DATAFIM,'') = '') 
+	AND (T0.ShortName = @FORNECEDOR OR ISNULL(@FORNECEDOR,'') = '')
+	And T0.RefDate <= @DATABASE
+
+GROUP BY 
+	T0.[TransId], T0.[Line_ID], T9.[BPLName] HAVING MAX(T0.[BalFcCred]) <>- SUM(T1.[ReconSumFC])  OR  MAX(T0.[BalDueCred]) <>- SUM(T1.[ReconSum])   
+ 
+ 
+ UNION ALL 
+ 
+ 
+ SELECT
+	T9.BPLName,
+	 MAX(T0.[ShortName]), 
+	 MAX(T4.CardName),
+	 ISNULL((CASE max(T0.TransType)
+		WHEN 30 THEN 'LCM'
+		WHEN 13 THEN 'NF de Saida'
+		WHEN 14 THEN 'Dev. NF de Saida'
+		WHEN 15 THEN 'Entrega'
+		WHEN 16 THEN 'Devolução'
+		WHEN 18 THEN 'NF de Entrada'
+		WHEN 19 THEN 'Dev. NF de Entrada'
+		WHEN 20 THEN 'Recebimento de Mercadoria'
+		WHEN 21 THEN 'Devolução de Mercadoria'
+		WHEN 69 THEN 'Despesas de Importação'
+		WHEN 60 THEN 'Saída de Mercadoria'
+		WHEN 59 THEN 'Entrada de Mercadoria'
+		WHEN 46 THEN 'Contas a Pagar' 
+		WHEN 24 THEN 'Contas a Receber'
+		WHEN 162 THEN 'Reavaliação de Estoque'
+		WHEN 67 THEN 'Transferencia de Estoque'
+		WHEN 203 THEN 'Adiantamento a Cliente'
+		WHEN 204 THEN 'Adiantamento a Fornecedor'
+		END),''), 
+	 MAX(T0.[BaseRef]), 
+	 MAX(T0.[LineMemo]), 
+	 MAX(T0.[TaxDate]), 
+	 MAX(T0.[DueDate]), 
+	 - MAX(T0.[BalDueDeb]) - SUM(T1.[ReconSum]),
+	 MAX(T0.[Account])
+
+
+FROM  
+	 [dbo].[JDT1] T0  
+	 INNER  JOIN [dbo].[ITR1] T1  ON  T1.[TransId] = T0.[TransId] AND T1.[TransRowId] = T0.[Line_ID]   
+	 INNER  JOIN [dbo].[OITR] T2  ON  T2.[ReconNum] = T1.[ReconNum]   
+	 INNER  JOIN [dbo].[OJDT] T3  ON  T3.[TransId] = T0.[TransId]   
+	 INNER  JOIN [dbo].[OCRD] T4  ON  T4.[CardCode] = T0.[ShortName]    
+	 LEFT OUTER  JOIN [dbo].[B1_JournalTransSourceView] T5  ON  T5.[ObjType] = T0.[TransType]  AND  T5.[DocEntry] = T0.[CreatedBy]  AND  (T5.[TransType] <> 'I'  OR  (T5.[TransType] = 'I'  AND  T5.[InstlmntID] = T0.[SourceLine] ))  
+	 Left Join OBPL T9 On T0.BPLId = T9.BPLId
+WHERE T4.[CardType] = 'S'  AND  
+T2.[ReconDate] > @DATABASE  AND  
+T1.[IsCredit] = 'D'
+AND (T0.DueDate >= @DATAINI OR ISNULL(@DATAINI,'') = '') AND
+(T0.DueDate <= @DATAFIM OR ISNULL(@DATAFIM,'') = '') 
+AND(T0.ShortName = @FORNECEDOR OR ISNULL(@FORNECEDOR,'') = '')
+And T0.RefDate <= @DATABASE
+
+GROUP BY 
+	T0.[TransId], 
+	T0.[Line_ID], 
+	T9.[BPLName] 
+	HAVING MAX(T0.[BalFcDeb]) <>- SUM(T1.[ReconSumFC])  OR  MAX(T0.[BalDueDeb]) <>- SUM(T1.[ReconSum])   
+
+ UNION ALL 
+ 
+SELECT
+	T9.BPLName,
+	MAX(T0.[ShortName]), 
+	MAX(T2.CardName),
+	ISNULL((CASE max(T0.TransType)
+			WHEN 30 THEN 'LCM'
+			WHEN 13 THEN 'NF de Saida'
+			WHEN 14 THEN 'Dev. NF de Saida'
+			WHEN 15 THEN 'Entrega'
+			WHEN 16 THEN 'Devolução'
+			WHEN 18 THEN 'NF de Entrada'
+			WHEN 19 THEN 'Dev. NF de Entrada'
+			WHEN 20 THEN 'Recebimento de Mercadoria'
+			WHEN 21 THEN 'Devolução de Mercadoria'
+			WHEN 69 THEN 'Despesas de Importação'
+			WHEN 60 THEN 'Saída de Mercadoria'
+			WHEN 59 THEN 'Entrada de Mercadoria'
+			WHEN 46 THEN 'Contas a Pagar' 
+			WHEN 24 THEN 'Contas a Receber'
+			WHEN 162 THEN 'Reavaliação de Estoque'
+			WHEN 67 THEN 'Transferencia de Estoque'
+			WHEN 203 THEN 'Adiantamento a Cliente'
+			WHEN 204 THEN 'Adiantamento a Fornecedor'
+			END),''), 
+	MAX(T0.[BaseRef]), 
+	MAX(T0.[LineMemo]), 
+	MAX(T0.[TaxDate]), 
+	MAX(T0.[DueDate]), 
+	MAX(T0.[BalDueCred]) - MAX(T0.[BalDueDeb]), 
+	MAX(T0.[Account])
+
+FROM  
+	[dbo].[JDT1] T0  
+	INNER  JOIN  [dbo].[OJDT] T1  ON  T1.[TransId] = T0.[TransId]   
+	INNER  JOIN [dbo].[OCRD] T2  ON  T2.[CardCode] = T0.[ShortName]    
+	LEFT OUTER  JOIN [dbo].[B1_JournalTransSourceView] T3  ON  T3.[ObjType] = T0.[TransType]  AND  T3.[DocEntry] = T0.[CreatedBy]  AND  (T3.[TransType] <> 'I'  OR  (T3.[TransType] = 'I'  AND  T3.[InstlmntID] = T0.[SourceLine] ))  
+	Left Join OBPL T9 ON T0.BPLId = T9.BPLId
+ 
+WHERE 
+	T2.[CardType] = 'S'  AND  
+	(T0.[BalDueCred] <> T0.[BalDueDeb]  OR  T0.[BalFcCred] <> T0.[BalFcDeb] ) AND   
+	NOT EXISTS (SELECT U0.[TransId], U0.[TransRowId] FROM  [dbo].[ITR1] U0  INNER  JOIN [dbo].[OITR] U1  ON  U1.[ReconNum] = U0.[ReconNum]   WHERE T0.[TransId] = U0.[TransId]  AND  T0.[Line_ID] = U0.[TransRowId] AND  U1.[ReconDate] > @DATABASE GROUP BY U0.[TransId], U0.[TransRowId])   
+	AND (T0.DueDate >= @DATAINI OR ISNULL(@DATAINI,'') = '') AND
+	(T0.DueDate <= @DATAFIM OR ISNULL(@DATAFIM,'') = '') 
+	AND(T0.ShortName = @FORNECEDOR OR ISNULL(@FORNECEDOR,'') = '')
+	And T0.RefDate <= @DATABASE
+GROUP BY 
+	T0.[TransId], T0.[Line_ID], T9.[BPLName]

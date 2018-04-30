@@ -1,0 +1,19 @@
+------------------- Inicio Separação Numero De Série -------------
+DECLARE CursorPV CURSOR FOR	
+SELECT T0.CardCode, T1.ItemCode, Convert(Integer, isnull(T1.Quantity,0)), T1.LineNum From ORDR T0, RDR1 T1, OITM T2 Where T0.DocEntry = T1.DocEntry And T0.DocEntry = @list_of_cols_val_tab_del And T1.ItemCode =  T2.ItemCode And Isnull(T2.ManSerNum,'N') = 'Y'
+OPEN CursorPV
+FETCH NEXT FROM CursorPV INTO @PNCode, @ItemCode, @Qtd, @LineNum
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	While(Select @Qtd - Isnull((Select COUNT(*) from [@GA_NSERIE] T10 Where T10.U_GA_pedido = @list_of_cols_val_tab_del And T10.U_GA_CodPN = @PNCode And T10.U_GA_CodItem = @ItemCode And T10.U_GA_LineNum = @LineNum),0)) > 0
+	Begin
+		Select @Code = ISNULL(Max(Convert(int,Code)),0) + 1, @NSerie = Max(U_GA_NumeroSerie) + 1 From [@GA_NSERIE]
+
+		Insert Into [@GA_NSERIE](Code, Name, U_GA_pedido, U_GA_CodPN, U_GA_CodItem, U_GA_NumeroSerie, U_GA_LineNum, U_GA_ObjType)
+				Values(@Code, @Code, @list_of_cols_val_tab_del, @PNCode, @ItemCode, @NSerie, @LineNum, '17')
+	End
+	FETCH NEXT FROM CursorPV INTO @PNCode, @ItemCode, @Qtd, @LineNum
+End
+CLOSE CursorPV
+DEALLOCATE CursorPV
+------------------- Fim Separação Numero De Série -------------

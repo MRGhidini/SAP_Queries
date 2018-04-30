@@ -1,0 +1,7 @@
+-- BLOQUEIO PARA O PREENCHIMENTO DO CAMPO TIPO DO MATERIAL
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.ItemClass = 2 AND ISNULL(T0.MatType,0) <> 1 AND ISNULL(T0.MatType,0) <> 0 AND ISNULL(T0.MatType,0) <> 3 AND ISNULL(T0.MatType,0) <> 7 AND ISNULL(T0.MatType,0) <> 8 AND ISNULL(T0.MatType,0) <> 9 AND ISNULL(T0.MatType,0) <> 10 AND ISNULL(T0.MatType,0) <> 99) > 0 
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Tipo do material deve ser 0-Mercadorias p/ revenda, 1-Produtos Acabados, 3-Matéria-prima, 7-Mat. uso e consumo, 8-Ativo Imobil., 9-Serviços, 10-Outros Insumos, 99-Outras'
+	GOTO End_Of_Block
+END

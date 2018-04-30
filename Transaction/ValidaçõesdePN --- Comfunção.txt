@@ -1,0 +1,55 @@
+IF (@object_type = '2' AND @transaction_type <> 'D')
+BEGIN
+	IF ISNULL((SELECT MAX(T0.CardType) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del), '') <> 'L'
+	BEGIN
+		-- INÍCIO CURSOR PARA VERIFICAR CNPJ E CPF DOS ENDEREÇOS
+		DECLARE ValidaCPFCNPJ CURSOR FOR
+			SELECT T0.TaxId0, T0.TaxId4, T0.[Address], T0.TaxId1, T1.Country FROM CRD7 T0, CRD1 T1, OCRD T2 WHERE T0.CardCode = @list_of_cols_val_tab_del AND 
+				T0.CardCode = T2.CardCode and T0.AddrType = 'S' and T0.[CardCode] = T1.[CardCode] and T0.[AddrType] = 'S' and 
+				((T2.CardType = 'C' and ISNULL(T0.[Address],'') <> '' and ISNULL(T0.[Address],'') = ISNULL(T1.[Address],'')  and  T1.[AdresType] = T0.[AddrType])
+				or 
+				(T2.CardType = 'S' and ISNULL(T0.[Address],'') = '' and ISNULL(T2.ShipToDef,'') = ISNULL(T1.[Address],'') and T1.[AdresType] = 'S'))
+			-- FIM CURSOR PARA VERIFICAR CNPJ E CPF DOS ENDEREÇOS
+		OPEN ValidaCPFCNPJ
+		FETCH NEXT FROM ValidaCPFCNPJ INTO @CNPJ, @CPF, @Endereco, @IE, @cCountry
+		
+		WHILE @@FETCH_STATUS = 0
+		BEGIN
+			IF ISNULL(@cCountry, '') <> 'BR'
+			BEGIN
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+
+			IF ISNULL(@IE, '') = '' and ISNULL(@CNPJ, '') <> ''
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'Informar a inscrição estadual (IE) ou selecionar isento -' + ' ' + @Endereco + '.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+
+			IF ISNULL(@CPF, '') = '' AND ISNULL(@CNPJ, '') = ''
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'CNPJ ou CPF deve ser Informado -' + ' ' + @Endereco + '.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+
+			IF ISNULL(@CPF, '') <> '' AND ISNULL(@CNPJ, '') <> ''
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'Informar o CNPJ ou o CPF, não os dois.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+			
+			If dbo.FUN_GA_VALIDACNPJCPF(@CPF, @CNPJ) <> ''
+			Begin
+				SET @error = 1
+				SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+			END
+			End_Of_ValidaCPFCNPJ:
+			FETCH NEXT FROM ValidaCPFCNPJ INTO @CNPJ, @CPF, @Endereco, @IE, @cCountry
+		END
+		CLOSE ValidaCPFCNPJ
+		DEALLOCATE ValidaCPFCNPJ
+	End
+End

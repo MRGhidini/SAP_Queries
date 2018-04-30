@@ -1,0 +1,7 @@
+If (Select count(*)from	RDR1 T1 Where T1.DocEntry = @list_of_cols_val_tab_del And T1.Price <= 0)> 0
+Begin
+	Set @ItemCode = Isnull((Select Top 1 T1.ItemCode from RDR1 T1 Where T1.DocEntry = @list_of_cols_val_tab_del And T1.Price <= 0),'')
+	set @error = 1
+	set @error_message = 'Valor Inválido para Item '+ @ItemCode
+	GOTO End_Of_Block
+End

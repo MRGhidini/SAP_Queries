@@ -1,0 +1,10 @@
+DROP FUNCTION FVE_HoraSAPFormatadaEmSegundos;
+CREATE FUNCTION FVE_HoraSAPFormatadaEmSegundos(Hora INT)
+RETURNS result INT
+LANGUAGE SQLSCRIPT READS SQL DATA
+AS
+BEGIN
+
+	result :=  (CAST(:Hora/100 AS INT)*60 + MOD(:Hora, 100))*60;
+
+END

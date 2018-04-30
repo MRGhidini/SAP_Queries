@@ -1,0 +1,1 @@
+select T0.Docentry, T0.CardCode, T0.CardName, T0.DocDate As [Emissao], Datediff(day,T0.DocDate,Getdate()) as [Dias Em Aberto] from OQUT T0 where T0.DocStatus <> 'C'

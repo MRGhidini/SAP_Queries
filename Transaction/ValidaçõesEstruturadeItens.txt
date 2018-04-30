@@ -1,0 +1,19 @@
+------------------------------------- INICIO VALIDA CADASTRO DE Estrutura --------------------------------------
+IF(@object_type = '66')
+BEGIN
+  IF(SELECT COUNT(*) FROM OITT T0, ITM1 T1 WHERE T0.Code = @list_of_cols_val_tab_del AND T1.ItemCode = T0.Code and T0.PriceList = T1.PriceList and (select SUM(T10.Quantity*isnull(T10.Price,0)) from ITT1 T10 where T10.Father = T0.Code) <> T1.Price) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Atualizar o Valor Total da Estrutura'
+        GOTO End_Of_Block
+  END
+
+  IF(SELECT COUNT(*) FROM ITT1 T0, OITT T1 WHERE T0.Father = @list_of_cols_val_tab_del and T1.Code = T0.Father and (isnull(T0.Project,'') = '' or isnull(T1.Project,'') <> isnull(T0.Project,''))) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Atualizar o campo Projeto no cabeçalho e nas linhas da estrutura'
+        GOTO End_Of_Block
+  END
+
+END
+------------------------------------- FIM VALIDA CADASTRO DE Estrutura --------------------------------------

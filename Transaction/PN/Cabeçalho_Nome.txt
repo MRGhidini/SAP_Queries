@@ -1,0 +1,14 @@
+-- NOME DO PN
+IF (SELECT ISNULL(T0.CardName, '') FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Informe a Razão Social do parceiro de negócio (PN).'
+	GOTO End_Of_Block
+END
+
+IF (SELECT LEN(T0.CardName) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) > 60
+BEGIN
+	SET @error = 1
+	SET @error_message = 'O campo Razão Social do parceiro de negócio (PN) permite no máximo 60 caracteres.'
+	GOTO End_Of_Block
+END

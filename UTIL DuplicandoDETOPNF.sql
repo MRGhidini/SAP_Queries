@@ -1,0 +1,30 @@
+insert into [@DETOPNF] 
+Select
+	RIGHT('00000000' + cast(cast(Code as int) +187 as varchar),8),
+	'2' + case when len(Name) = 30 then right(name,29) else name end,
+	U_DOCB1,
+	U_TIPOOP,
+	U_SOMAIPI,
+	U_VALIDAORIGEM,
+	U_VALIDAMPBEM,
+	U_CFOPSTCOD,
+	U_CFOPSTD,
+	U_VALIDACUSTOS,
+	U_CONTACPV,
+	U_VALIDACOMISSAO,
+	U_CfopSTForaC,
+	U_CfopSTForaD,
+	U_ItemClass,
+	U_MatType,
+	U_ProductSrc,
+	U_NewProductSrc,
+	U_UTILCOD,
+	U_UTILD,
+	U_CFOPCOD,
+	U_CFOPD,
+	U_TIPODEP,
+	U_ITMCLASS,
+	2,
+	U_NewMatType
+From
+	[@DETOPNF]

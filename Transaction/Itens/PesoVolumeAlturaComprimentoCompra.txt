@@ -1,0 +1,40 @@
+-- BLOQUEIO PARA O PREENCHIMENTO DO COMPRIMENTO DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.BLength1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Comprimento de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DA LARGURA DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.BWidth1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Largura de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DA ALTURA DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.BHeight1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Altura de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO VOLUME DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.BVolume,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Volume de Compras em branco.'
+        GOTO End_Of_Block
+  END
+
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO PESO DE COMPRAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(BWeight1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Peso de Compras em branco.'
+        GOTO End_Of_Block
+  END

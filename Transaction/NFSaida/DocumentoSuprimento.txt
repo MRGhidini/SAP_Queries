@@ -1,0 +1,7 @@
+---------- Validação de Checkbox Documento de Suprimento -----------------
+If (select COUNT('a') from OINV T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.PoPrss,'N')  = 'N') > 0
+Begin
+	SET @error = 1
+	SET @error_message = 'É necessário marcar o check Documento de Suprimento na aba Logística'
+	GOTO End_Of_Block
+End

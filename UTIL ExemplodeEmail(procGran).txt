@@ -1,0 +1,135 @@
+USE [AddOne]
+GO
+
+/****** Object:  StoredProcedure [dbo].[EnvioEmailAprovacao]    Script Date: 07/03/2013 15:20:38 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+Alter procedure [dbo].[EnvioEmailAprovacao] as 
+
+If (select COUNT(*) from Addone.dbo.EmailAprovacao) > 0
+begin
+
+declare @WddCode int, @UserCode int, @UserName varchar(100), @Email varchar(100), @Empresa varchar(100), @CodigoUsuario varchar(20)
+
+Declare @AUX Table 
+                    (WddCode int, UserId int, Email varchar(100), Empresa varchar(100)) 
+
+Declare EmailsSeparados Cursor for   
+select WddCode, UserId, Email, Empresa from Addone.dbo.EmailAprovacao
+
+
+Open EmailsSeparados
+FETCH NEXT FROM EmailsSeparados INTO @WddCode, @UserCode, @Email, @Empresa
+
+    
+WHILE @@FETCH_STATUS = 0 
+BEGIN
+ WHILE (SELECT CHARINDEX(';',ltrim(rtrim(@Email)))) <> 0 
+ BEGIN
+  insert into @AUX (WddCode, UserId, Email, Empresa) values (@WddCode,@UserCode, SUBSTRING(ltrim(rtrim(@Email)),1,CHARINDEX(';',ltrim(rtrim(@Email)))-1),@Empresa)
+  set @Email = SUBSTRING(ltrim(rtrim(@Email)),CHARINDEX(';',ltrim(rtrim(@Email)))+1,len(ltrim(rtrim(@Email)))-CHARINDEX(';',ltrim(rtrim(@Email))))
+ END
+ 
+ If LEN(isnull(ltrim(rtrim(@Email)),'')) > 1
+  insert into @AUX (WddCode, UserId, Email, Empresa) values (@WddCode,@UserCode, SUBSTRING(ltrim(rtrim(@Email)),1,LEN(ltrim(rtrim(@Email)))), @Empresa)
+ FETCH NEXT FROM EmailsSeparados INTO @WddCode, @UserCode, @Email, @Empresa
+END
+ 
+CLOSE EmailsSeparados
+DEALLOCATE EmailsSeparados
+
+
+delete from Addone.dbo.EmailAprovacao
+
+
+DECLARE @tableHTML  NVARCHAR(MAX) 
+
+Declare Emails Cursor for   
+select T0.Email from @AUX T0, Addone.dbo.GA_AprovacoesPendentes T1 where T1.WddCode = T0.WddCode and T1.Empresa collate SQL_Latin1_General_CP1_CI_AS = T0.Empresa and T1.UserId = T0.UserId group by T0.Email
+
+
+Open Emails
+FETCH NEXT FROM Emails INTO @Email
+
+    
+WHILE @@FETCH_STATUS = 0 
+BEGIN
+
+ set @CodigoUsuario = isnull((select top 1 T10.Login from AutorizadorGA.dbo.Usuarios T10 where T10.EMail = @Email),'')
+
+/*
+
+ SET @tableHTML =
+    N'<H2>SAP-Solicitação de aprovação</H2>' +
+    N'<table border="1">' +
+    N'<tr><th>Empresa</th><th>Documento Aprovação</th><th>No. Esboço</th>' +
+    N'<th>Tipo de documento</th><th>Observações do Solicitante</th><th>Observações do documento</th>' +
+    N'<th>Razão Social</th><th>Total do Documento</th><th>Autorização</th><th>Link</th></tr>' +
+    CAST ( ( SELECT td = T0.Empresa,       '',td = T0.WddCode,       '',
+                    td = T0.DocEntry,       '',
+                    td = T0.Objtype,       '',
+                 	td = T0.ObsAprovacao,       '',
+                 	td = T0.ObsDocumento,       '',
+                 	td = T0.CardName,       '',
+                 	td = T0.DocTotal,       '',
+                 	td = T0.DescricaoModelo,       '',
+                 	td = (SELECT 1 AS Tag, NULL AS Parent,
+          [a!1] = 'Autorização - '+MAX(T0.UserCode),
+          [a!1!href] = 'http://www.globo.com'
+         FOR XML EXPLICIT, TYPE
+        ),       ''
+                 	FROM Addone.dbo.GA_AprovacoesPendentes T0, @AUX T1 WHERE T1.WddCode = T0.WddCode and T1.Empresa = T0.Empresa and T1.UserId = T0.UserId and T1.Email = @Email group by T0.Empresa, T0.WddCode, T0.DocEntry, T0.Objtype, T0.ObsAprovacao, T0.ObsDocumento, T0.CardName, T0.DocTotal, T0.DescricaoModelo
+                 	
+                 	FOR XML PATH('tr'), TYPE 
+    ) AS NVARCHAR(MAX) ) +  N'</table>' */
+
+
+
+
+ SET @tableHTML =
+	N'<H1><b>ESTE E-MAIL FOI ENVIADO DA BASE DE VALIDAÇÃO, CASO NÃO FAÇO PARTE DESSA ETAPA FAVOR DESCONSIDERAR </b></H1>' +
+    N'<H2>SAP-Solicitação de aprovação</H2>' + case when @CodigoUsuario <> '' then 
+    N'<H3>Para aprovar ou reprovar as solitações: </H3>' +
+    N'<ul><li><a href="http://172.18.30.13/mobile/login.aspx?user='+@CodigoUsuario+'">Se estiver conectado à rede da empresa, acesse por aqui</A></li>' --+
+   -- N'<li><a href="http://201.90.67.74/mobile/Login.aspx?user='+@CodigoUsuario+'">Caso esteja fora da empresa, acesse por aqui</A></li></ul>' 
+    else '' end +
+    N'<table border="1">' +
+    N'<tr><th>Empresa</th><th>Documento Aprovação</th><th>No. Esboço</th>' +
+    N'<th>Tipo de documento</th><th>Observações do Solicitante</th><th>Observações do documento</th>' +
+    N'<th>Razão Social</th><th>Total do Documento</th><th>Autorização</th></tr>' +
+    CAST ( ( SELECT td = T0.Empresa,       '',td = T0.WddCode,       '',
+                    td = T0.DocEntry,       '',
+                    td = T0.Objtype,       '',
+                 	td = T0.ObsAprovacao,       '',
+                 	td = T0.ObsDocumento,       '',
+                 	td = T0.CardName,       '',
+                 	td = T0.DocTotal,       '',
+                 	td = T0.DescricaoModelo,       ''
+
+                 	FROM Addone.dbo.GA_AprovacoesPendentes T0, @AUX T1 WHERE T1.WddCode = T0.WddCode and T1.Empresa collate SQL_Latin1_General_CP1_CI_AS = T0.Empresa and T1.UserId = T0.UserId and T1.Email = @Email group by T0.Empresa, T0.WddCode, T0.DocEntry, T0.Objtype, T0.ObsAprovacao, T0.ObsDocumento, T0.CardName, T0.DocTotal, T0.DescricaoModelo order by T0.Empresa, T0.WddCode, T0.DocEntry, T0.Objtype
+                 	
+                 	FOR XML PATH('tr'), TYPE 
+    ) AS NVARCHAR(MAX) ) +  N'</table>' 
+/*    
+  EXEC msdb.dbo.sp_send_dbmail 
+    @profile_name = 'Granbio',
+    @recipients= @Email,
+    @subject = 'SAP - Solicitação de aprovação',
+    @body = @tableHTML,
+    @body_format = 'HTML'
+ */ 
+  FETCH NEXT FROM Emails INTO @Email
+END
+CLOSE Emails
+DEALLOCATE Emails
+end
+
+
+
+GO
+
+

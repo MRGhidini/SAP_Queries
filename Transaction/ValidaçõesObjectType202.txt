@@ -1,0 +1,18 @@
+IF(@object_type = '202')
+BEGIN
+
+ If (SELECT count('a') FROM OWOR T1, WOR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.OcrCode,'') = '') > 0 
+ begin
+  SET @ERROR = 1
+  SET @ERROR_MESSAGE = 'Preencher centro de custo na Linha: ' + (SELECT ltrim(str(min(isnull(T0.VisOrder,0)+1))) FROM OWOR T1, WOR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.OcrCode,'') = '')
+  GOTO End_Of_Block
+ end
+
+ If (SELECT count('a') FROM OWOR T1, WOR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.Project,'') = '') > 0 
+ begin
+  SET @ERROR = 1
+  SET @ERROR_MESSAGE = 'Preencher código do projeto na Linha: ' + (SELECT ltrim(str(min(isnull(T0.VisOrder,0)+1))) FROM OWOR T1, WOR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.Project,'') = '')
+  GOTO End_Of_Block
+ end
+
+END

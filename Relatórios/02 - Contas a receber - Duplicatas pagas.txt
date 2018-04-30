@@ -1,0 +1,92 @@
+/*Contas a receber - Duplicatas pagas*/
+
+
+
+
+
+
+
+
+
+
+
+/*Select 2 from [dbo].[OJDT] T2 where T2.RefDate >= '[%1]' and T2.RefDate <= '[%2]'
+*/
+
+declare @dataini datetime, @dataFim datetime
+set @dataini = '[%1]'
+set @datafim = '[%2]'
+
+
+Select 
+T3.DocNum 'Doc de Recebimento',
+'NF de Saida' as  'Tipo de Documento Origem',
+T1.DocNum '# Doc. SAP',
+T1.DocDate 'Data de emissão',	
+T2.DueDate 'Dt.Vencto', 
+T0.InstId 'Prestação',
+ltrim(str(T1.Serial)) 'NF/Detalhes', 
+T1.CardCode 'Código', 
+T1.CardName 'Cliente', 
+T3.DocDate 'Data do pagamento',
+T3.DocTotal*((T0.SumApplied*100)/(select sum(T4.SumApplied) from RCT2 T4 where T4.DocNum = T3.DocNum)/100) 'Valor recebido',
+T2.InsTotal as 'Total da Parcela'
+
+from RCT2 T0, OINV T1, INV6 T2, ORCT T3
+
+where 
+T3.DocNum =  T0.DocNum and T1.DocEntry = T2.DocEntry and T2.DocEntry = T0.DocEntry 
+and T2.InstlmntID = T0.InstId and T0.InvType = 13 and T3.Canceled <> 'Y'
+and (T3.DocDate >= @dataini or isnull(@dataini,'') = '')
+and (T3.DocDate <= @datafim or isnull(@datafim,'') = '')
+
+union all
+
+select 
+T3.DocNum 'Doc de Recebimento',
+'LCM' AS 'Tipo de Documento Origem',
+T2.TransId, 
+T2.RefDate as 'Data de emissão',
+T2.DueDate, 
+case when T1.TransType = 13 then T2.SourceLine else ISNULL(T2.Line_Id,0)+1 end 'Prestação',
+'LCM '+ ltrim(T2.TransID) + ' - '+ISNULL(T2.LineMemo,'') 'NF', 
+T3.CardCode, 
+T3.CardName,
+T3.DocDate 'Data do Pagamento',
+T3.DocTotal*((T0.SumApplied*100)/(select sum(T4.SumApplied) from RCT2 T4 where T4.DocNum = T3.DocNum)/100) 'Valor recebido',
+T2.Debit   'Total da Parcela'
+
+from RCT2 T0, OJDT T1, JDT1 T2, ORCT T3 
+where T3.DocNum =  T0.DocNum and T1.TransId= T2.TransId and T1.TransId = T0.DocEntry 
+and T2.Line_ID = T0.DocLine and T0.InvType = 30 and 
+T3.Canceled <> 'Y' 
+and (T3.DocDate >= @dataini or isnull(@dataini,'') = '')
+and (T3.DocDate <= @datafim or isnull(@datafim,'') = '')
+
+UNION ALL
+
+Select 
+T3.DocNum 'Doc de Recebimento',
+'Adiantamento a Cliente' as 'Tipo de Documento Origem',
+T1.DocNum '# Doc. SAP',
+T1.DocDate 'Data de emissão',	
+T2.DueDate 'Dt.Vencto', 
+T0.InstId 'Prestação',
+T1.JrnlMemo 'NF/Detalhes', 
+T1.CardCode 'Código', 
+T1.CardName 'Cliente', 
+T3.DocDate 'Data do pagamento',
+T3.DocTotal*((T0.SumApplied*100)/(select sum(T4.SumApplied) from RCT2 T4 where T4.DocNum = T3.DocNum)/100) 'Valor recebido',
+T2.InsTotal as 'Total da Parcela'
+
+from RCT2 T0, ODPI T1, DPI6 T2, ORCT T3
+
+where 
+T3.DocNum =  T0.DocNum and T1.DocEntry = T2.DocEntry and T2.DocEntry = T0.DocEntry 
+and T2.InstlmntID = T0.InstId and T0.InvType = 203 and T3.Canceled <> 'Y'
+and (T3.DocDate >= @dataini or isnull(@dataini,'') = '')
+and (T3.DocDate <= @datafim or isnull(@datafim,'') = '')
+
+order by 'Data de emissão', 'Dt.Vencto', '# Doc. SAP'
+
+/*SI25914 - 10/02/14*/

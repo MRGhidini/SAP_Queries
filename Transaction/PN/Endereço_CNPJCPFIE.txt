@@ -1,0 +1,169 @@
+-- INÍCIO VALIDA CNPJ/CPF/IE NOS ENDEREÇOS
+-- INÍCIO CURSOR PARA VERIFICAR CNPJ E CPF DOS ENDEREÇOS
+DECLARE ValidaCPFCNPJ CURSOR FOR
+SELECT T0.TaxId0, T0.TaxId4, T0.[Address], T0.TaxId1, T1.Country FROM CRD7 T0, CRD1 T1, OCRD T2 WHERE T0.CardCode = @list_of_cols_val_tab_del AND 
+	T0.CardCode = T2.CardCode and T0.AddrType = 'S' and T0.[CardCode] = T1.[CardCode] and T0.[AddrType] = 'S' and 
+	((T2.CardType = 'C' and ISNULL(T0.[Address],'') <> '' and ISNULL(T0.[Address],'') = ISNULL(T1.[Address],'')  and  T1.[AdresType] = T0.[AddrType])
+	or 
+	(T2.CardType = 'S' and ISNULL(T0.[Address],'') = '' and ISNULL(T2.ShipToDef,'') = ISNULL(T1.[Address],'') and T1.[AdresType] = 'S'))
+-- FIM CURSOR PARA VERIFICAR CNPJ E CPF DOS ENDEREÇOS
+OPEN ValidaCPFCNPJ
+FETCH NEXT FROM ValidaCPFCNPJ INTO @CNPJ, @CPF, @Endereco, @IE, @cCountry
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	IF ISNULL(@cCountry, '') <> 'BR'
+	BEGIN
+		GOTO End_Of_ValidaCPFCNPJ
+	END
+
+	IF ISNULL(@IE, '') = '' and ISNULL(@CNPJ, '') <> ''
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Informar a inscrição estadual (IE) ou selecionar isento -' + ' ' + @Endereco + '.'
+		GOTO End_Of_ValidaCPFCNPJ
+	END
+
+	IF ISNULL(@CPF, '') = '' AND ISNULL(@CNPJ, '') = ''
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'CNPJ ou CPF deve ser Informado -' + ' ' + @Endereco + '.'
+		GOTO End_Of_ValidaCPFCNPJ
+	END
+
+	IF ISNULL(@CPF, '') <> '' AND ISNULL(@CNPJ, '') <> ''
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Informar o CNPJ ou o CPF, não os dois.'
+		GOTO End_Of_ValidaCPFCNPJ
+	END
+
+
+	-- INÍCIO VALIDAR CNPJ NOS ENDEREÇOS
+	IF ISNULL(@CNPJ, '') <> ''
+	BEGIN
+		SET @CNPJMult1 = '543298765432'
+		SET @CNPJMult2 = '6543298765432'
+		SET @x = 1
+		SET @valor = ''
+		
+		IF LEN(@CNPJ) > 18
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+			GOTO End_Of_ValidaCPFCNPJ
+		END
+		WHILE (@x <= LEN(@CNPJ))
+		BEGIN
+			IF (CHARINDEX(SUBSTRING(@CNPJ, @x, 1), '1234567890', 0) <> 0)
+			BEGIN
+				SET @valor = @valor + SUBSTRING(@CNPJ, @x, 1)
+			END
+			SET @x = @x + 1
+		END
+		IF LEN(@valor) <> 14
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+			GOTO End_Of_ValidaCPFCNPJ
+		END
+ 
+		ELSE
+		BEGIN
+			SET @x = 1
+			SET @dig1 = 0
+			WHILE @x <= 12
+			BEGIN
+				SET @dig1 = @dig1 + (CAST(SUBSTRING(@valor, @x, 1) AS INT) * CAST(SUBSTRING(@CNPJMult1, @x, 1) AS INT))
+				SET @x = @x + 1
+			END
+			SET @x = 1
+			SET @dig2 = 0
+			WHILE (@x <= 13)
+			BEGIN
+				SET @dig2 = @dig2 + (CAST(SUBSTRING(@valor , @x, 1) AS INT) * CAST(SUBSTRING(@CNPJMult2, @x, 1) AS INT))
+				SET @x = @x + 1
+			END
+			SET @dig1 = (@dig1 * 10) % 11
+			SET @dig2 = (@dig2 * 10) % 11
+			IF @dig1 = 10 BEGIN SET @dig1 = 0 END
+			IF @dig2 = 10 BEGIN SET @dig2 = 0 END
+			
+			IF @dig1 <> CAST(SUBSTRING(@valor, 13, 1) AS INT) OR @dig2 <> CAST(SUBSTRING(@valor, 14, 1) AS INT)
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+		END
+	END
+-- FIM VALIDAR CNPJ NOS ENDEREÇOS
+
+-- INÍCIO VALIDAR CPF NOS ENDEREÇOS
+	IF ISNULL(@CPF, '') <> ''
+	BEGIN
+		SET @CPFMult1 = 10
+		SET @CPFMult2 = 11
+		SET @x = 1
+		SET @valor = ''
+		IF LEN(@CNPJ) > 14
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'CPF Inválido -' + ' ' + @Endereco + '.'
+			GOTO End_Of_ValidaCPFCNPJ
+		END      
+		WHILE (@x <= LEN(@CPF))
+		BEGIN
+			IF CHARINDEX(SUBSTRING(@CPF, @x, 1), '1234567890', 0) <> 0
+			BEGIN
+				SET @valor = @valor + SUBSTRING(@CPF, @x, 1)
+			END
+			SET @x = @x + 1
+		END
+		IF LEN(@valor) <> 11
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'CPF Inválido -' + ' ' + @Endereco + '.'
+			GOTO End_Of_ValidaCPFCNPJ
+		END
+ 
+		ELSE
+		BEGIN
+			SET @x = 1
+			SET @dig1 = 0
+			WHILE @x <= 9
+			BEGIN
+				SET @dig1 = @dig1 + (CAST(SUBSTRING(@valor , @x , 1) AS INT) * @CPFMult1)
+				SET @x = @x + 1
+				SET @CPFMult1 = @CPFMult1 - 1
+			END
+			SET @x = 1
+			SET @dig2 = 0
+			WHILE @x <= 10
+			BEGIN
+				SET @dig2 = @dig2 + (CAST(SUBSTRING(@valor , @x , 1) AS INT) * @CPFMult2)
+				SET @x = @x + 1
+				SET @CPFMult2 = @CPFMult2 - 1
+			END
+			SET @dig1 = (@dig1 * 10) % 11
+			SET @dig2 = (@dig2 * 10) % 11
+			IF @dig1 = 10 BEGIN SET @dig1 = 0 END
+			IF @dig2 = 10 BEGIN SET @dig2 = 0 END
+			IF @dig1 <> CAST(SUBSTRING(@valor, 10, 1) AS INT) OR @dig2 <> CAST(SUBSTRING(@valor, 11, 1) AS INT)
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'CPF Inválido -' + ' ' + @Endereco + '.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+		END
+	END
+	-- FIM VALIDA CPF NOS ENDEREÇOS
+	FETCH NEXT FROM ValidaCPFCNPJ INTO @CNPJ, @CPF, @Endereco, @IE, @cCountry
+END
+End_Of_ValidaCPFCNPJ:
+CLOSE ValidaCPFCNPJ
+DEALLOCATE ValidaCPFCNPJ
+IF @error <> 0
+BEGIN
+	GOTO End_Of_Block
+END
+-- FIM VALIDA CNPJ/CPF/IE NOS ENDEREÇOS

@@ -1,0 +1,23 @@
+CREATE PROCEDURE [dbo].[Print]
+    @sql varchar(max)
+AS
+BEGIN
+    declare
+        @n int,
+        @i int = 0,
+        @s int = 0, -- substring start posotion
+        @l int;     -- substring length
+
+    set @n = ceiling(len(@sql) / 8000.0);
+
+    while @i < @n
+    begin
+        set @l = 8000 - charindex(char(13), reverse(substring(@sql, @s, 8000)));
+        print substring(@sql, @s, @l);
+        set @i = @i + 1;
+        set @s = @s + @l + 2; -- accumulation + CR/LF
+    end
+
+    RETURN 0
+END
+

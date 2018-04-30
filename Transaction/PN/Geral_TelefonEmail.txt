@@ -1,0 +1,19 @@
+IF (SELECT count(*) FROM OCRD T0 WHERE isnull(T0.Country,'') = 'BR' AND T0.CardCode = @list_of_cols_val_tab_del and (ISNULL(T0.Phone1, '') = '' or CHARINDEX(' ',ISNULL(T0.Phone1, '')) <> 0 or isnumeric(REPLACE(ISNULL(T0.Phone1,''),'-','')) = 0 )) > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Telefone inválido ou não informado.'
+	GOTO End_Of_Block
+END
+IF (SELECT count(*) FROM OCRD T0 WHERE isnull(T0.Country,'') = 'BR' AND T0.CardCode = @list_of_cols_val_tab_del and (ISNULL(T0.Phone2, '') = '' or CHARINDEX(' ',ISNULL(T0.Phone2, '')) <> 0 or isnumeric(REPLACE(ISNULL(T0.Phone2,''),'-','')) = 0 )) > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'DDD inválido ou não informado.'
+	GOTO End_Of_Block
+END
+
+IF (SELECT count(*) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del and ISNULL(T0.E_Mail, '') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'E-mail não informado'
+	GOTO End_Of_Block
+END

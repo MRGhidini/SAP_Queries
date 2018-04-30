@@ -1,0 +1,9 @@
+IF(@object_type = '67' AND @transaction_type = 'A')
+BEGIN
+ If (SELECT count('a') FROM OWTR T1, WTR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.Project,'') = '') > 0 
+ begin
+  SET @ERROR = 1
+  SET @ERROR_MESSAGE = 'Preencher código do projeto na Linha: ' + (SELECT TOP 1 ltrim(str(min(isnull(T0.VisOrder,0)+1))) FROM OWTR T1, WTR1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.Project,'') = '')
+  GOTO End_Of_Block
+ end
+END

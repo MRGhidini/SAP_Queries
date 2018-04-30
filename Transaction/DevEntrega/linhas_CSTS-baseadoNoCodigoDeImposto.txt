@@ -1,0 +1,19 @@
+IF (select COUNT('a') from RDN1 T3, RDN4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('ICMS') AND isnull(T3.CSTCode,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher CST para ICMS na linha: '+ltrim(str((select MAX(T3.Visorder)+1 from RDN1 T3, RDN4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('ICMS') AND isnull(T3.CSTCode,'') = '')))
+	GOTO End_Of_Block
+END
+
+IF (select COUNT('a') from RDN1 T3, RDN4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('PIS') AND isnull(T3.CSTfPIS,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher CST para PIS na linha: '+ltrim(str((select MAX(T3.Visorder)+1 from RDN1 T3, RDN4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('PIS') AND isnull(T3.CSTfPIS,'') = '')))
+	GOTO End_Of_Block
+END
+IF (select COUNT('a') from RDN1 T3, RDN4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('COFINS') AND isnull(T3.CSTfCOFINS,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher CST para COFINS na linha: '+ltrim(str((select MAX(T3.Visorder)+1 from RDN1 T3, RDN4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('COFINS') AND isnull(T3.CSTfCOFINS,'') = '')))
+	GOTO End_Of_Block
+END

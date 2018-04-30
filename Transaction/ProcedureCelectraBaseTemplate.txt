@@ -1,0 +1,569 @@
+/****** Object:  StoredProcedure [dbo].[SBO_SP_TransactionNotification]    Script Date: 07/08/2013 16:29:40 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER proc [dbo].[SBO_SP_TransactionNotification] 
+
+@object_type nvarchar(20), 				-- SBO Object Type
+@transaction_type nchar(1),			-- [A]dd, [U]pdate, [D]elete, [C]ancel, C[L]ose
+@num_of_cols_in_key int,
+@list_of_key_cols_tab_del nvarchar(255),
+@list_of_cols_val_tab_del nvarchar(255)
+
+AS
+
+begin
+
+-- Return values
+declare @error  int				-- Result (0 for no error)
+declare @error_message nvarchar (200) 		-- Error string to be displayed
+select @error = 0
+select @error_message = N'Ok'
+
+--------------------------------------------------------------------------------------------------------------------------------
+
+--	ADD	YOUR	CODE	HERE
+
+------ Declaração de Variaveis ----------------
+------ Declarações de Varíaveis de Itens
+Declare @ItemCode varchar(30)
+Declare @UNITBUY NVARCHAR(10)
+Declare @UNITSELL NVARCHAR(10)
+Declare @UNITSTOCK NVARCHAR(10)
+Declare @NCM Int
+
+------ Declarações de Varíaveis de PN
+DECLARE @Endereco NVARCHAR(50)
+DECLARE @CNPJ NVARCHAR(30) 
+DECLARE @CPF NVARCHAR(30)
+DECLARE @IE NVARCHAR(30)
+DECLARE @cCounty NVARCHAR(100)
+DECLARE @cCountry NVARCHAR(2)
+DECLARE @CNPJMult1 NVARCHAR(14)
+DECLARE @CNPJMult2 NVARCHAR(14)
+DECLARE @CPFMult1 INT
+DECLARE @CPFMult2 INT
+DECLARE @dig1 INT
+DECLARE @dig2 INT
+DECLARE @valor NVARCHAR(30)
+DECLARE @x INT
+
+-------- Fim declaração Variaveis
+
+---------------------------------------------------------------------------------- Início Processo De Compra -------------------------------------------------
+----------Início Validação Pedido de Compras---------------------
+If @object_type = 22 and @transaction_type in('A', 'U')
+
+Begin
+	----- Validação Item MP sem Oferta de Compra
+	If (Select count(*)from	POR1 T1 Where T1.DocEntry = @list_of_cols_val_tab_del And
+											T1.ItemCode in (Select T10.ItemCode from OITM T10 where isnull(MatType,0) = 3) And
+											Isnull(T1.BaseType,0) <> 540000006) > 0
+	Begin
+		Set @ItemCode = Isnull((Select Top 1 T1.ItemCode from POR1 T1 Where DocEntry = @list_of_cols_val_tab_del And T1.ItemCode in (Select T10.ItemCode from OITM T10 where isnull(MatType,0) = 3) And Isnull(T1.BaseType,0) <> 540000006),'')
+		set @error = 1
+		set @error_message = 'Item '+ @ItemCode + ' Do tipo Matéria-Prima deve ter Oferta de compra vincúlada ao pedido'
+		GOTO End_Of_Block
+	End
+		
+	----- Validação Código de Imposto
+	If (select COUNT('a') from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher código de imposto na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '')))
+		GOTO End_Of_Block
+	END
+	---------------- Validação todos CST ---------------------------
+	If (select COUNT('a') from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTCode,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST ICMS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTCode,'') = '')))
+		GOTO End_Of_Block
+	END
+	If (select COUNT('a') from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfPIS,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST PIS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfPIS,'') = '')))
+		GOTO End_Of_Block
+	END
+	If (select COUNT('a') from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfCOFINS,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST COFINS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfCOFINS,'') = '')))
+		GOTO End_Of_Block
+	END
+	If (select COUNT('a') from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfIPI,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST IPI na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from POR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfIPI,'') = '')))
+		GOTO End_Of_Block
+	END
+	
+	--------- Validação NCM --------------------
+	If (select COUNT('a') from POR1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and T1.NcmCode < 0) > 0
+	Begin
+		SET @error = 1
+		SET @error_message = 'Item ' +(Select top 1 T0.ItemCode from POR1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and T1.NcmCode < 0)  + ' Não Possuí NCM de compra cadastrado. Favor arrumar o cadastro.'
+		GOTO End_Of_Block
+	End
+	--------- Validação Forma e Condição de Pagamento
+	If (Select count(*) from OPOR T0 where T0.DocEntry = @list_of_cols_val_tab_del And
+	                        (isnull(T0.GroupNum,-1) < 0 Or Len(rtrim(ltrim(isnull(T0.PeyMethod,'')))) = 0))> 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Favor Preencher Forma e Condição de Pagamento'
+		GOTO End_Of_Block
+	END
+End
+
+----------Fim do Pedido de Compras---------------------
+
+----------Início Validação Recebimento de Mercadorias---------------------
+If @object_type = 20 and @transaction_type in( 'A', 'U')
+Begin
+	----- Validação Item MP sem Oferta de Compra
+	If (Select count(*)from	PDN1 T1 Where T1.DocEntry = @list_of_cols_val_tab_del And
+											T1.ItemCode in (Select T10.ItemCode from OITM T10 where isnull(MatType,0) = 3) And
+											Isnull(T1.BaseType,0) <> 22) > 0
+	Begin
+		Set @ItemCode = Isnull((Select Top 1 T1.ItemCode from PDN1 T1 Where DocEntry = @list_of_cols_val_tab_del And T1.ItemCode in (Select T10.ItemCode from OITM T10 where isnull(MatType,0) = 3) And Isnull(T1.BaseType,0) <> 22),'')
+		set @error = 1
+		set @error_message = 'Item '+ @ItemCode + ' Do tipo Matéria-Prima deve ter Pedido de compra vincúlado ao Recebimento'
+		GOTO End_Of_Block
+	End
+End
+----------Fim Validação Recebimento de Mercadorias---------------------
+
+----------Início Validação Nota Fiscal de Entrada---------------------
+If @object_type = 18 and @transaction_type in( 'A', 'U')
+Begin
+	----- Validação Item MP sem Oferta de Compra
+	If (Select count(*)from	PCH1 T1 Where T1.DocEntry = @list_of_cols_val_tab_del And
+											T1.ItemCode in (Select T10.ItemCode from OITM T10 where isnull(MatType,0) = 3) And
+											Isnull(T1.BaseType,0) <> 20) > 0
+	Begin
+		Set @ItemCode = Isnull((Select Top 1 T1.ItemCode from PCH1 T1 Where DocEntry = @list_of_cols_val_tab_del And T1.ItemCode in (Select T10.ItemCode from OITM T10 where isnull(MatType,0) = 3) And Isnull(T1.BaseType,0) <> 20),'')
+		set @error = 1
+		set @error_message = 'Item '+ @ItemCode + ' Do tipo Matéria-Prima deve ter Recebimento de mercadoria vincúlado a NF-Entrada'
+		GOTO End_Of_Block
+	End
+End
+----------Fim Validação Nota Fiscal de Entrada---------------------
+
+---------------------------------------------------------------------------------- Fim Processo De Compra -------------------------------------------------
+
+---------------------------------------------------------------------------------- Início Processo De Venda -------------------------------------------------
+------------------------------------- Início VALIDA Pedido de Venda --------------------------------------
+IF(@object_type = '17' and @transaction_type in( 'A', 'U'))
+BEGIN
+	If (Select count(*)from	RDR1 T1 Where T1.DocEntry = @list_of_cols_val_tab_del And T1.Price <= 0)> 0
+	Begin
+		Set @ItemCode = Isnull((Select Top 1 T1.ItemCode from RDR1 T1 Where T1.DocEntry = @list_of_cols_val_tab_del And T1.Price <= 0),'')
+		set @error = 1
+		set @error_message = 'Valor Inválido para Item '+ @ItemCode
+		GOTO End_Of_Block
+	End
+	
+	
+	----- Validação Código de Imposto
+	If (select COUNT('a') from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher código de imposto na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '')))
+		GOTO End_Of_Block
+	END
+	---------------- Validação todos CST ---------------------------
+	If (select COUNT('a') from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTCode,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST ICMS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTCode,'') = '')))
+		GOTO End_Of_Block
+	END
+	If (select COUNT('a') from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfPIS,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST PIS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfPIS,'') = '')))
+		GOTO End_Of_Block
+	END
+	If (select COUNT('a') from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfCOFINS,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST COFINS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfCOFINS,'') = '')))
+		GOTO End_Of_Block
+	END
+	If (select COUNT('a') from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfIPI,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST IPI na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfIPI,'') = '')))
+		GOTO End_Of_Block
+	END
+	------ Unidade de medida na linha da venda
+	If (select COUNT('a') from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.unitMsr,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher Unidade de venda na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from RDR1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.unitMsr,'') = '')))
+		GOTO End_Of_Block
+	END
+	
+	--------- Validação NCM no Cadastro --------------------
+	If (select COUNT('a') from RDR1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and T1.NcmCode < 0) > 0
+	Begin
+		SET @error = 1
+		SET @error_message = 'Item ' +(Select top 1 T0.ItemCode from RDR1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and T1.NcmCode < 0)  + ' Não Possuí NCM de Venda cadastrado. Favor arrumar o cadastro.'
+		GOTO End_Of_Block
+	End
+	--------- Validação Unidade de Medida No Cadastro --------------------
+	If (select COUNT('a') from RDR1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and isnull(T1.SalUnitMsr,'') = '') > 0
+	Begin
+		SET @error = 1
+		SET @error_message = 'Item ' +(Select top 1 T0.ItemCode from RDR1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and isnull(T1.SalUnitMsr,'') = '')  + ' Não Possuí Unidade de Venda cadastrada. Favor arrumar o cadastro.'
+		GOTO End_Of_Block
+	End
+	
+End
+------------------------- Fim Validação Pedido de Venda -------------------
+
+------------------------- Início Validação Nota Fiscal de Saída -------------------
+IF(@object_type = '13' and @transaction_type in( 'A', 'U') and 
+		(Select Count(*) From INV1 T0, ORIN T1 where T0.Docentry = 14 And T0.TargetType = @list_of_cols_val_tab_del and T0.TrgetEntry = T1.DocEntry and T1.SeqCode = 1) = 0)
+BEGIN
+	-----	Informações Fiscais -------
+	IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and (isnull(T0.TaxId0,'') = '' and isnull(T0.TaxId4,'') = '') and isnull(T0.CountryS,'') = 'BR') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher o CNPJ/CPF na Aba Impostos->Identific. fiscais.'
+		GOTO End_Of_Block
+	END
+	
+	IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and (isnull(T0.TaxId0,'') <> '' and isnull(T0.TaxId1,'') = '') and isnull(T0.CountryS,'') = 'BR') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Necessário preenchimento da Inscrição Estadual. Caso não possua, é necessário que seja preenchido com Isento.'
+		GOTO End_Of_Block
+	END
+	-----  Informações de Endereço ------
+	IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CountryS,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher País no endereço de entrega na Aba Imposto'
+		GOTO End_Of_Block
+	END
+	IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.StateS,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher Estado no endereço de entrega na Aba Imposto'
+		GOTO End_Of_Block
+	END
+	IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CountyS,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher Cidade no endereço de entrega na Aba Imposto'
+		GOTO End_Of_Block
+	END
+	------ Valor dos produtos
+	If (Select count(*)from	INV1 T1 Where T1.DocEntry = @list_of_cols_val_tab_del And T1.Price <= 0)> 0
+	Begin
+		Set @ItemCode = Isnull((Select Top 1 T1.ItemCode from INV1 T1 Where T1.DocEntry = @list_of_cols_val_tab_del And T1.Price <= 0),'')
+		set @error = 1
+		set @error_message = 'Valor Inválido para Item '+ @ItemCode
+		GOTO End_Of_Block
+	End
+	
+	
+	----- Validação Código de Imposto
+	If (select COUNT('a') from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher código de imposto na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '')))
+		GOTO End_Of_Block
+	END
+	---------------- Validação todos CST ---------------------------
+	If (select COUNT('a') from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTCode,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST ICMS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTCode,'') = '')))
+		GOTO End_Of_Block
+	END
+	If (select COUNT('a') from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfPIS,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST PIS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfPIS,'') = '')))
+		GOTO End_Of_Block
+	END
+	If (select COUNT('a') from INV1 T0, INV4 T1, OSTT T2 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfCOFINS,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST COFINS na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfCOFINS,'') = '')))
+		GOTO End_Of_Block
+	END
+	If (select COUNT('a') from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfIPI,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher CST IPI na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CSTfIPI,'') = '')))
+		GOTO End_Of_Block
+	END
+	------ Unidade de medida na linha da venda
+	If (select COUNT('a') from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.unitMsr,'') = '') > 0
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Preencher Unidade de venda na linha: '+ltrim(str((select Top 1 T0.Visorder + 1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.unitMsr,'') = '')))
+		GOTO End_Of_Block
+	END
+	
+	--------- Validação NCM no Cadastro --------------------
+	If (select COUNT('a') from INV1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and T1.NcmCode < 0) > 0
+	Begin
+		SET @error = 1
+		SET @error_message = 'Item ' +(Select top 1 T0.ItemCode from INV1 T0, OITM T1 where T0.ItemCode = T1.ItemCode and T0.DocEntry = @list_of_cols_val_tab_del and T1.NcmCode < 0)  + ' Não Possuí NCM de Venda cadastrado. Favor arrumar o cadastro.'
+		GOTO End_Of_Block
+	End
+End
+
+------------------------- Fim Validação Nota Fiscal de Saída -------------------
+---------------------------------------------------------------------------------- Fim Processo De Venda -------------------------------------------------
+---------------------------- Inicio da Validação Cadastro de Itens ---------------------
+IF (@object_type = '4' AND @transaction_type <> 'D')
+Begin
+	------------------- Início Validação Campos Obrigatórios NFe -----------------------
+	If (Select count(*) From OITM T0 where T0.ItemCode = @list_of_cols_val_tab_del And T0.ItemClass = 2 And Isnull(T0.InvntItem,'N') = 'Y') > 0
+	Begin
+		SELECT @UNITBUY = T0.BuyUnitMsr, @UNITSELL = T0.SalUnitMsr, @UNITSTOCK = T0.InvntryUom, @NCM = T0.NcmCode FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del
+		IF(RTRIM(LTRIM(ISNULL(@UNITBUY,''))) = '')
+		Begin
+			SET @ERROR = 1
+			SET @ERROR_MESSAGE = 'Preencher a Unidade de Medida na aba Dados de Compras.'
+			goto End_of_Block
+		END
+		IF(rtrim(ltrim(ISNULL(@UNITSELL,''))) = '')
+		BEGIN
+			--SET @ERROR = 1
+			SET @ERROR_MESSAGE = 'Preencher a Unidade de Medida na aba Dados Vendas.'
+			goto End_of_Block
+		END
+		IF(rtrim(ltrim(ISNULL(@UNITSTOCK,''))) = '')
+		BEGIN
+			SET @ERROR = 1
+			SET @ERROR_MESSAGE = 'Preencher a Unidade de Medida na aba Dados Estoque.'
+			goto End_of_Block
+		END
+		IF @NCM < 0 
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'NCM não preenchido'
+			GOTO End_Of_Block
+		END
+	End
+	------------------- Fim Validação Campos Obrigatórios NFe -----------------------
+END
+---------------------------- Fim da Validação Cadastro de Itens ---------------------
+
+---------------------------- Validação Cadastro de PN -------------------------------
+IF (@object_type = '2' AND @transaction_type <> 'D')
+BEGIN
+	IF ISNULL((SELECT MAX(T0.CardType) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del), '') <> 'L'
+	BEGIN
+		---- Cabeçalho
+		-- NOME DO PN
+		IF (SELECT ISNULL(T0.CardName, '') FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) = ''
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'Informe a Razão Social do parceiro de negócio (PN).'
+			GOTO End_Of_Block
+		END
+
+		IF (SELECT LEN(T0.CardName) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) > 60
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'O campo Razão Social do parceiro de negócio (PN) permite no máximo 60 caracteres.'
+			GOTO End_Of_Block
+		END
+
+		-- NOME FANTASIA
+		IF (SELECT LEN(T0.CardFName) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) > 60
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'O campo Nome Fantasia do parceiro de negócio (PN) permite no máximo 60 caracteres.'
+			GOTO End_Of_Block
+		END
+		
+		-- INÍCIO VALIDA CNPJ/CPF/IE NOS ENDEREÇOS
+		-- INÍCIO CURSOR PARA VERIFICAR CNPJ E CPF DOS ENDEREÇOS
+		DECLARE ValidaCPFCNPJ CURSOR FOR
+		SELECT T0.TaxId0, T0.TaxId4, T0.[Address], T0.TaxId1, T1.Country FROM CRD7 T0, CRD1 T1, OCRD T2 WHERE T0.CardCode = @list_of_cols_val_tab_del AND 
+			T0.CardCode = T2.CardCode and T0.AddrType = 'S' and T0.[CardCode] = T1.[CardCode] and T0.[AddrType] = 'S' and 
+			((T2.CardType = 'C' and ISNULL(T0.[Address],'') <> '' and ISNULL(T0.[Address],'') = ISNULL(T1.[Address],'')  and  T1.[AdresType] = T0.[AddrType])
+			or 
+			(T2.CardType = 'S' and ISNULL(T0.[Address],'') = '' and ISNULL(T2.ShipToDef,'') = ISNULL(T1.[Address],'') and T1.[AdresType] = 'S'))
+		-- FIM CURSOR PARA VERIFICAR CNPJ E CPF DOS ENDEREÇOS
+		OPEN ValidaCPFCNPJ
+		FETCH NEXT FROM ValidaCPFCNPJ INTO @CNPJ, @CPF, @Endereco, @IE, @cCountry
+		WHILE @@FETCH_STATUS = 0
+		BEGIN
+			IF ISNULL(@cCountry, '') <> 'BR'
+			BEGIN
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+
+			IF ISNULL(@IE, '') = '' and ISNULL(@CNPJ, '') <> ''
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'Informar a inscrição estadual (IE) ou selecionar isento -' + ' ' + @Endereco + '.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+
+			IF ISNULL(@CPF, '') = '' AND ISNULL(@CNPJ, '') = ''
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'CNPJ ou CPF deve ser Informado -' + ' ' + @Endereco + '.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+
+			IF ISNULL(@CPF, '') <> '' AND ISNULL(@CNPJ, '') <> ''
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'Informar o CNPJ ou o CPF, não os dois.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+
+
+			-- INÍCIO VALIDAR CNPJ NOS ENDEREÇOS
+			IF ISNULL(@CNPJ, '') <> ''
+			BEGIN
+				SET @CNPJMult1 = '543298765432'
+				SET @CNPJMult2 = '6543298765432'
+				SET @x = 1
+				SET @valor = ''
+				
+				IF LEN(@CNPJ) > 18
+				BEGIN
+					SET @error = 1
+					SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+					GOTO End_Of_ValidaCPFCNPJ
+				END
+				WHILE (@x <= LEN(@CNPJ))
+				BEGIN
+					IF (CHARINDEX(SUBSTRING(@CNPJ, @x, 1), '1234567890', 0) <> 0)
+					BEGIN
+						SET @valor = @valor + SUBSTRING(@CNPJ, @x, 1)
+					END
+					SET @x = @x + 1
+				END
+				IF LEN(@valor) <> 14
+				BEGIN
+					SET @error = 1
+					SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+					GOTO End_Of_ValidaCPFCNPJ
+				END
+		 
+				ELSE
+				BEGIN
+					SET @x = 1
+					SET @dig1 = 0
+					WHILE @x <= 12
+					BEGIN
+						SET @dig1 = @dig1 + (CAST(SUBSTRING(@valor, @x, 1) AS INT) * CAST(SUBSTRING(@CNPJMult1, @x, 1) AS INT))
+						SET @x = @x + 1
+					END
+					SET @x = 1
+					SET @dig2 = 0
+					WHILE (@x <= 13)
+					BEGIN
+						SET @dig2 = @dig2 + (CAST(SUBSTRING(@valor , @x, 1) AS INT) * CAST(SUBSTRING(@CNPJMult2, @x, 1) AS INT))
+						SET @x = @x + 1
+					END
+					SET @dig1 = (@dig1 * 10) % 11
+					SET @dig2 = (@dig2 * 10) % 11
+					IF @dig1 = 10 BEGIN SET @dig1 = 0 END
+					IF @dig2 = 10 BEGIN SET @dig2 = 0 END
+					
+					IF @dig1 <> CAST(SUBSTRING(@valor, 13, 1) AS INT) OR @dig2 <> CAST(SUBSTRING(@valor, 14, 1) AS INT)
+					BEGIN
+						SET @error = 1
+						SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+						GOTO End_Of_ValidaCPFCNPJ
+					END
+				END
+			END
+		-- FIM VALIDAR CNPJ NOS ENDEREÇOS
+
+		-- INÍCIO VALIDAR CPF NOS ENDEREÇOS
+			IF ISNULL(@CPF, '') <> ''
+			BEGIN
+				SET @CPFMult1 = 10
+				SET @CPFMult2 = 11
+				SET @x = 1
+				SET @valor = ''
+				IF LEN(@CNPJ) > 14
+				BEGIN
+					SET @error = 1
+					SET @error_message = 'CPF Inválido -' + ' ' + @Endereco + '.'
+					GOTO End_Of_ValidaCPFCNPJ
+				END      
+				WHILE (@x <= LEN(@CPF))
+				BEGIN
+					IF CHARINDEX(SUBSTRING(@CPF, @x, 1), '1234567890', 0) <> 0
+					BEGIN
+						SET @valor = @valor + SUBSTRING(@CPF, @x, 1)
+					END
+					SET @x = @x + 1
+				END
+				IF LEN(@valor) <> 11
+				BEGIN
+					SET @error = 1
+					SET @error_message = 'CPF Inválido -' + ' ' + @Endereco + '.'
+					GOTO End_Of_ValidaCPFCNPJ
+				END
+		 
+				ELSE
+				BEGIN
+					SET @x = 1
+					SET @dig1 = 0
+					WHILE @x <= 9
+					BEGIN
+						SET @dig1 = @dig1 + (CAST(SUBSTRING(@valor , @x , 1) AS INT) * @CPFMult1)
+						SET @x = @x + 1
+						SET @CPFMult1 = @CPFMult1 - 1
+					END
+					SET @x = 1
+					SET @dig2 = 0
+					WHILE @x <= 10
+					BEGIN
+						SET @dig2 = @dig2 + (CAST(SUBSTRING(@valor , @x , 1) AS INT) * @CPFMult2)
+						SET @x = @x + 1
+						SET @CPFMult2 = @CPFMult2 - 1
+					END
+					SET @dig1 = (@dig1 * 10) % 11
+					SET @dig2 = (@dig2 * 10) % 11
+					IF @dig1 = 10 BEGIN SET @dig1 = 0 END
+					IF @dig2 = 10 BEGIN SET @dig2 = 0 END
+					IF @dig1 <> CAST(SUBSTRING(@valor, 10, 1) AS INT) OR @dig2 <> CAST(SUBSTRING(@valor, 11, 1) AS INT)
+					BEGIN
+						SET @error = 1
+						SET @error_message = 'CPF Inválido -' + ' ' + @Endereco + '.'
+						GOTO End_Of_ValidaCPFCNPJ
+					END
+				END
+			END
+			-- FIM VALIDA CPF NOS ENDEREÇOS
+			FETCH NEXT FROM ValidaCPFCNPJ INTO @CNPJ, @CPF, @Endereco, @IE, @cCountry
+		END
+		End_Of_ValidaCPFCNPJ:
+		CLOSE ValidaCPFCNPJ
+		DEALLOCATE ValidaCPFCNPJ
+		IF @error <> 0
+		BEGIN
+			GOTO End_Of_Block
+		END
+		-- FIM VALIDA CNPJ/CPF/IE NOS ENDEREÇOS
+	End
+End
+
+---------------------------- Fim Validação Cadastro de PN -------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
+-- FIM DO BLOCO, SEMPRE UTILIZAR NAS PROCEDURES
+End_Of_Block: 
+-- Select the return values
+select @error, @error_message
+
+end

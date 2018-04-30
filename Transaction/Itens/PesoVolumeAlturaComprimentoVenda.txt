@@ -1,0 +1,39 @@
+-- BLOQUEIO PARA O PREENCHIMENTO DO COMPRIMENTO DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.SLength1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Comprimento de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DA LARGURA DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.SWidth1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Largura de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DA ALTURA DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.SHeight1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Altura de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO VOLUME DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(T0.SVolume,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Volume de Vendas em branco.'
+        GOTO End_Of_Block
+  END
+
+-- BLOQUEIO PARA O PREENCHIMENTO DO PESO DE VENDAS
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ISNULL(SWeight1,0) = 0 AND ISNULL(T0.ItemClass,'') = 2) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Peso de Vendas em branco.'
+        GOTO End_Of_Block
+  END

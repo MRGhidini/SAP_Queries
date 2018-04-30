@@ -1,0 +1,522 @@
+IF (@object_type = '2' AND @transaction_type <> 'D')
+BEGIN
+
+-- VARIÁVEIS PARA VALIDAÇÃO DO CNPJ E CPF
+DECLARE @CNPJMult1 NVARCHAR(14)
+DECLARE @CNPJMult2 NVARCHAR(14)
+DECLARE @CPFMult1 INT
+DECLARE @CPFMult2 INT
+DECLARE @dig1 INT
+DECLARE @dig2 INT
+DECLARE @valor NVARCHAR(30)
+DECLARE @x INT
+DECLARE @Endereco NVARCHAR(50)
+DECLARE @CNPJ NVARCHAR(30) 
+DECLARE @CPF NVARCHAR(30)
+
+-- VARIÁVEIS PARA VALIDAÇÃO DE INSCRIÇÃO ESTADUAL OU MUNICIPAL
+DECLARE @IE NVARCHAR(30)
+DECLARE @IM NVARCHAR(30)
+
+-- VARIÁVEIS PARA VALIDAÇÃO DO CÓDIGO
+DECLARE @tamanhocodigo3 INT, @tamanhocodigo2 INT
+
+-- VARIÁVEIS PARA VALIDAÇÃO DOS ENDEREÇOS
+DECLARE @cAddress NVARCHAR(50)
+DECLARE @cAddrType NVARCHAR(100)
+DECLARE @cStreet NVARCHAR(100)
+DECLARE @cStreetNo NVARCHAR(100)
+DECLARE @cBuilding NVARCHAR(100)
+DECLARE @cZipCode NVARCHAR(20)
+DECLARE @cBlock NVARCHAR(100)
+DECLARE @cCity NVARCHAR(100)
+DECLARE @cState NVARCHAR(100)
+DECLARE @cCounty NVARCHAR(100)
+DECLARE @cAdresType NVARCHAR(1)
+DECLARE @cTypeDescr NVARCHAR(100)
+DECLARE @cCountry NVARCHAR(2)
+DECLARE @CNPJEMPRESA NVARCHAR(20)
+SET @tamanhocodigo3 = 6
+SET @tamanhocodigo2 = 3
+SET @CNPJEMPRESA = ISNULL((SELECT TaxIdNum FROM OADM),'')
+
+---------- CABEÇALHO ----------
+-- VALIDAÇÃO CÓDIGO PN
+IF ((SELECT CASE T0.CardType
+   WHEN 'C' THEN
+   CASE WHEN SUBSTRING(@list_of_cols_val_tab_del, 1, 3) = 'BR5' AND ASCII(SUBSTRING(@list_of_cols_val_tab_del, 1, 3)) = ASCII('BR5') THEN 1 ELSE 0 END
+   WHEN 'S' THEN
+   CASE WHEN (SUBSTRING(@list_of_cols_val_tab_del, 1, 3) = 'BR9' AND ASCII(SUBSTRING(@list_of_cols_val_tab_del, 1, 3)) = ASCII('BR9')) OR (SUBSTRING(@list_of_cols_val_tab_del, 1, 3) = 'BR8' AND ASCII(SUBSTRING(@list_of_cols_val_tab_del, 1, 3)) = ASCII('BR8')) THEN 1 ELSE 0 END
+   WHEN 'L' THEN
+   CASE WHEN SUBSTRING(@list_of_cols_val_tab_del, 1, 3) = 'BR5' AND ASCII(SUBSTRING(@list_of_cols_val_tab_del, 1, 3)) = ASCII('BR5') THEN 1 ELSE 0 END
+   ELSE
+   0
+   END
+   FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) <> 1 AND @transaction_type <> 'D')
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Inicial do código não corresponde ao tipo do parceiro de negócios (PN).'
+	GOTO End_Of_Block
+END
+
+IF ((SELECT ISNUMERIC(SUBSTRING(T0.CardCode, @tamanhocodigo2 + 1, @tamanhocodigo3)) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) = 0)
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Código inválido. Após o inicial, o código deve ser numérico.'
+	GOTO End_Of_Block
+END
+
+IF ((SELECT CASE WHEN LEN(LTRIM(@list_of_cols_val_tab_del)) <> (@tamanhocodigo3 + @tamanhocodigo2) THEN 0 ELSE 1 END) = 0)
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Tamanho do código inválido. Deve ser igual a' + ' ' + LTRIM(STR(@tamanhocodigo3 + @tamanhocodigo2)) + '.'
+	GOTO End_Of_Block
+END
+
+-- NOME DO PN
+IF (SELECT ISNULL(T0.CardName, '') FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Informe a Razão Social do parceiro de negócio (PN).'
+	GOTO End_Of_Block
+END
+
+IF (SELECT LEN(T0.CardName) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) > 60
+BEGIN
+	SET @error = 1
+	SET @error_message = 'O campo Razão Social do parceiro de negócio (PN) permite no máximo 60 caracteres.'
+	GOTO End_Of_Block
+END
+
+-- NOME FANTASIA
+IF (SELECT LEN(T0.CardFName) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) > 60
+BEGIN
+	SET @error = 1
+	SET @error_message = 'O campo Nome Fantasia do parceiro de negócio (PN) permite no máximo 60 caracteres.'
+	GOTO End_Of_Block
+END
+
+IF CONVERT(varbinary(100),upper((select top 1 T0.CardName from OCRD T0 where T0.CardCode = @list_of_cols_val_tab_del))) <> CONVERT(varbinary(100),(select top 1 T0.CardName from OCRD T0 where T0.CardCode = @list_of_cols_val_tab_del))
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Somente permitidas letras maiúsculas no campo Razão Social.'
+	GOTO End_Of_Block
+END
+
+IF CONVERT(varbinary(100),upper((select top 1 T0.CardFName from OCRD T0 where T0.CardCode = @list_of_cols_val_tab_del))) <> CONVERT(varbinary(100),(select top 1 T0.CardFName from OCRD T0 where T0.CardCode = @list_of_cols_val_tab_del))
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Somente permitidas letras maiúsculas no campo Nome Fantasia.'
+	GOTO End_Of_Block
+END
+
+
+IF (SELECT count(*) FROM OCRD T0 WHERE isnull(T0.Country,'') = 'BR' AND T0.CardCode = @list_of_cols_val_tab_del and (ISNULL(T0.Phone1, '') = '' or CHARINDEX(' ',ISNULL(T0.Phone1, '')) <> 0 or isnumeric(REPLACE(ISNULL(T0.Phone1,''),'-','')) = 0 )) > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Telefone inválido ou não informado.'
+	GOTO End_Of_Block
+END
+IF (SELECT count(*) FROM OCRD T0 WHERE isnull(T0.Country,'') = 'BR' AND T0.CardCode = @list_of_cols_val_tab_del and (ISNULL(T0.Phone2, '') = '' or CHARINDEX(' ',ISNULL(T0.Phone2, '')) <> 0 or isnumeric(REPLACE(ISNULL(T0.Phone2,''),'-','')) = 0 )) > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'DDD inválido ou não informado.'
+	GOTO End_Of_Block
+END
+
+IF (SELECT count(*) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del and ISNULL(T0.E_Mail, '') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'E-mail não informado'
+	GOTO End_Of_Block
+END
+
+
+---------- ABA GERAL ----------
+-- TELEFONE PRINCIPAL
+/*IF (SELECT ISNULL(T0.Phone1, '') FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Telefone não informado.'
+	GOTO End_Of_Block
+END
+
+-- DDD DO TELEFONE PRINCIPAL
+IF (SELECT ISNULL(T0.Phone2, '') FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'DDD não informado.'
+	GOTO End_Of_Block
+END*/
+
+---------- ABA CONTATOS ----------
+-- CONTATO PRINCIPAL
+/*IF (SELECT COUNT(*) FROM OCPR T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) = 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Contato não informado.'
+	GOTO End_Of_Block
+END
+ELSE
+BEGIN
+
+-- TELEFONE DO CONTATO
+IF (SELECT ISNULL(Tel1, '') FROM OCRD T0, OCPR T1 WHERE T0.CardCode = T1.CardCode AND T0.CntctPrsn = T1.Name AND T1.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Telefone do contato não informado.'
+	GOTO End_Of_Block
+END
+
+-- DDD DO CONTATO
+IF (SELECT ISNULL(Tel2, '') FROM OCRD T0, OCPR T1 WHERE T0.CardCode = T1.CardCode AND T0.CntctPrsn = T1.Name AND T1.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'DDD do contato não informado.'
+	GOTO End_Of_Block
+END
+
+-- E-MAIL DO CONTATO
+IF (SELECT ISNULL(E_MailL, '') FROM OCRD T0, OCPR T1 WHERE T0.CardCode = T1.CardCode AND T0.CntctPrsn = T1.Name AND T1.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'E-mail do contato não informado.'
+	GOTO End_Of_Block
+END
+END*/
+
+---------- ABA ENDEREÇOS ----------
+-- INÍCIO VALIDA ENDEREÇO
+IF (SELECT ISNULL(MAX(T0.CardType), '') FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) <> 'L'
+BEGIN
+IF((SELECT COUNT(*) FROM crd1 T0 WHERE T0.CardCode = @list_of_cols_val_tab_del AND T0.AdresType = 'B') = 0)
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Endereço de cobrança/pagamento não informado.'
+	GOTO End_Of_Block
+END
+
+IF((SELECT COUNT(*) FROM crd1 T0 WHERE T0.CardCode = @list_of_cols_val_tab_del AND T0.AdresType = 'S') = 0)
+BEGIN
+		SET @error = 1
+		SET @error_message = 'Endereço de destinatário não informado.'
+		GOTO End_Of_Block
+END
+
+DECLARE ValidaEndereco CURSOR FOR
+SELECT T0.Address, T0.AddrType, T0.Street, T0.StreetNo, T0.Building, T0.ZipCode, T0.Block, T0.City, T0.State, T0.County, T0.AdresType, T0.Country FROM CRD1 T0 WHERE T0.CardCode = @list_of_cols_val_tab_del AND (T0.AdresType = 'B' OR T0.AdresType = 'S')
+OPEN ValidaEndereco
+FETCH NEXT FROM ValidaEndereco INTO @cAddress, @cAddrType, @cStreet, @cStreetNo, @cBuilding, @cZipCode, @cBlock, @cCity, @cState, @cCounty, @cAdresType, @cCountry
+WHILE @@FETCH_STATUS = 0 
+BEGIN
+IF ISNULL(@cAdresType, '') = 'B'
+BEGIN
+	SET @cTypeDescr = 'Endereço de cobrança/pagamento'
+END
+ELSE -- 'S'
+BEGIN
+	SET @cTypeDescr = 'Destinatário'
+END
+
+IF ISNULL(@cAddrType, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo Tipo de Logradouro (Rua, Av, Praça, etc.) do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF ISNULL(@cStreet, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo Logradouro do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF ISNULL(@cStreetNo, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo Número do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF ISNULL(@cZipCode, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo CEP do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF ISNULL(@cCountry, '') = 'BR' AND (LEN(@cZipCode) < 8 OR LEN(@cZipCode) > 9)
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo CEP do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'está incorreto.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF ISNULL(@cCountry, '') = 'BR' AND LEN(@cZipCode) = 9 AND
+   (Ascii(Substring(@cZipCode,1,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,2,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,3,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,4,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,5,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,6,1)) <> 45 OR
+    Ascii(Substring(@cZipCode,7,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,8,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,9,1)) NOT BETWEEN 48 AND 57)
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo CEP do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'está incorreto.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF ISNULL(@cCountry, '') = 'BR' AND LEN(@cZipCode) = 8 AND
+   (Ascii(Substring(@cZipCode,1,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,2,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,3,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,4,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,5,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,6,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,7,1)) NOT BETWEEN 48 AND 57 OR
+    Ascii(Substring(@cZipCode,8,1)) NOT BETWEEN 48 AND 57)
+	BEGIN
+ 		SET @error = 1
+	SET @error_message = 'O campo CEP do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'está incorreto.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF ISNULL(@cBlock, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo Bairro do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+	
+IF ISNULL(@cState, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo Estado do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+	
+IF ISNULL(@cState, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo Estado do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF ISNULL(@cCounty, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O campo Município do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF LEN(@cStreetNo) > 60
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O Campo Número do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'permiti no máximo 60 caracteres.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF LEN(@cBuilding) > 60
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O Campo Complemento do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'permiti no máximo 60 caracteres.'
+ 		GOTO End_Of_ValidaEndereco
+	END
+
+IF LEN(@cBlock) > 60
+	BEGIN
+ 		SET @error = 1
+ 		SET @error_message = 'O Campo Bairro do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'permiti no máximo 60 caracteres.'
+ 		GOTO End_Of_ValidaEndereco
+	END    
+
+FETCH NEXT FROM ValidaEndereco INTO @cAddress, @cAddrType, @cStreet, @cStreetNo, @cBuilding, @cZipCode, @cBlock, @cCity, @cState, @cCounty, @cAdresType, @cCountry
+END
+End_Of_ValidaEndereco:
+CLOSE ValidaEndereco
+DEALLOCATE ValidaEndereco
+IF @error <> 0
+BEGIN
+	GOTO End_Of_Block
+END
+END
+-- FIM VALIDA ENDEREÇO
+
+-- INÍCIO VALIDA CNPJ/CPF/IE NOS ENDEREÇOS
+IF ISNULL((SELECT MAX(T0.CardType) FROM OCRD T0 WHERE T0.CardCode = @list_of_cols_val_tab_del), '') <> 'L'
+BEGIN
+-- INÍCIO CURSOR PARA VERIFICAR CNPJ E CPF DOS ENDEREÇOS
+DECLARE ValidaCPFCNPJ CURSOR FOR
+SELECT T0.TaxId0, T0.TaxId4, T0.[Address], T0.TaxId1, T1.Country FROM CRD7 T0, CRD1 T1, OCRD T2 WHERE T0.CardCode = @list_of_cols_val_tab_del AND 
+	T0.CardCode = T2.CardCode and T0.AddrType = 'S' and T0.[CardCode] = T1.[CardCode] and T0.[AddrType] = 'S' and 
+	((T2.CardType = 'C' and ISNULL(T0.[Address],'') <> '' and ISNULL(T0.[Address],'') = ISNULL(T1.[Address],'')  and  T1.[AdresType] = T0.[AddrType])
+	or 
+	(T2.CardType = 'S' and ISNULL(T0.[Address],'') = '' and ISNULL(T2.ShipToDef,'') = ISNULL(T1.[Address],'') and T1.[AdresType] = 'S'))
+-- FIM CURSOR PARA VERIFICAR CNPJ E CPF DOS ENDEREÇOS
+OPEN ValidaCPFCNPJ
+FETCH NEXT FROM ValidaCPFCNPJ INTO @CNPJ, @CPF, @Endereco, @IE, @cCountry
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	IF ISNULL(@cCountry, '') <> 'BR'
+	BEGIN
+		GOTO End_Of_ValidaCPFCNPJ
+	END
+
+	IF ISNULL(@IE, '') = '' and ISNULL(@CNPJ, '') <> ''
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Informar a inscrição estadual (IE) ou selecionar isento -' + ' ' + @Endereco + '.'
+		GOTO End_Of_ValidaCPFCNPJ
+	END
+
+	IF ISNULL(@CPF, '') = '' AND ISNULL(@CNPJ, '') = ''
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'CNPJ ou CPF deve ser Informado -' + ' ' + @Endereco + '.'
+		GOTO End_Of_ValidaCPFCNPJ
+	END
+
+	IF ISNULL(@CPF, '') <> '' AND ISNULL(@CNPJ, '') <> ''
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'Informar o CNPJ ou o CPF, não os dois.'
+		GOTO End_Of_ValidaCPFCNPJ
+	END
+
+
+	-- INÍCIO VALIDAR CNPJ NOS ENDEREÇOS
+	IF ISNULL(@CNPJ, '') <> ''
+	BEGIN
+		SET @CNPJMult1 = '543298765432'
+		SET @CNPJMult2 = '6543298765432'
+		SET @x = 1
+		SET @valor = ''
+		
+		IF LEN(@CNPJ) > 18
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+			GOTO End_Of_ValidaCPFCNPJ
+		END
+		WHILE (@x <= LEN(@CNPJ))
+		BEGIN
+			IF (CHARINDEX(SUBSTRING(@CNPJ, @x, 1), '1234567890', 0) <> 0)
+			BEGIN
+				SET @valor = @valor + SUBSTRING(@CNPJ, @x, 1)
+			END
+			SET @x = @x + 1
+		END
+		IF LEN(@valor) <> 14
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+			GOTO End_Of_ValidaCPFCNPJ
+		END
+ 
+		ELSE
+		BEGIN
+			SET @x = 1
+			SET @dig1 = 0
+			WHILE @x <= 12
+			BEGIN
+				SET @dig1 = @dig1 + (CAST(SUBSTRING(@valor, @x, 1) AS INT) * CAST(SUBSTRING(@CNPJMult1, @x, 1) AS INT))
+				SET @x = @x + 1
+			END
+			SET @x = 1
+			SET @dig2 = 0
+			WHILE (@x <= 13)
+			BEGIN
+				SET @dig2 = @dig2 + (CAST(SUBSTRING(@valor , @x, 1) AS INT) * CAST(SUBSTRING(@CNPJMult2, @x, 1) AS INT))
+				SET @x = @x + 1
+			END
+			SET @dig1 = (@dig1 * 10) % 11
+			SET @dig2 = (@dig2 * 10) % 11
+			IF @dig1 = 10 BEGIN SET @dig1 = 0 END
+			IF @dig2 = 10 BEGIN SET @dig2 = 0 END
+			
+			IF @dig1 <> CAST(SUBSTRING(@valor, 13, 1) AS INT) OR @dig2 <> CAST(SUBSTRING(@valor, 14, 1) AS INT)
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'CNPJ Inválido -' + ' ' + @Endereco + '.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+		END
+	END
+-- FIM VALIDAR CNPJ NOS ENDEREÇOS
+
+-- INÍCIO VALIDAR CPF NOS ENDEREÇOS
+	IF ISNULL(@CPF, '') <> ''
+	BEGIN
+		SET @CPFMult1 = 10
+		SET @CPFMult2 = 11
+		SET @x = 1
+		SET @valor = ''
+		IF LEN(@CNPJ) > 14
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'CPF Inválido -' + ' ' + @Endereco + '.'
+			GOTO End_Of_ValidaCPFCNPJ
+		END      
+		WHILE (@x <= LEN(@CPF))
+		BEGIN
+			IF CHARINDEX(SUBSTRING(@CPF, @x, 1), '1234567890', 0) <> 0
+			BEGIN
+				SET @valor = @valor + SUBSTRING(@CPF, @x, 1)
+			END
+			SET @x = @x + 1
+		END
+		IF LEN(@valor) <> 11
+		BEGIN
+			SET @error = 1
+			SET @error_message = 'CPF Inválido -' + ' ' + @Endereco + '.'
+			GOTO End_Of_ValidaCPFCNPJ
+		END
+ 
+		ELSE
+		BEGIN
+			SET @x = 1
+			SET @dig1 = 0
+			WHILE @x <= 9
+			BEGIN
+				SET @dig1 = @dig1 + (CAST(SUBSTRING(@valor , @x , 1) AS INT) * @CPFMult1)
+				SET @x = @x + 1
+				SET @CPFMult1 = @CPFMult1 - 1
+			END
+			SET @x = 1
+			SET @dig2 = 0
+			WHILE @x <= 10
+			BEGIN
+				SET @dig2 = @dig2 + (CAST(SUBSTRING(@valor , @x , 1) AS INT) * @CPFMult2)
+				SET @x = @x + 1
+				SET @CPFMult2 = @CPFMult2 - 1
+			END
+			SET @dig1 = (@dig1 * 10) % 11
+			SET @dig2 = (@dig2 * 10) % 11
+			IF @dig1 = 10 BEGIN SET @dig1 = 0 END
+			IF @dig2 = 10 BEGIN SET @dig2 = 0 END
+			IF @dig1 <> CAST(SUBSTRING(@valor, 10, 1) AS INT) OR @dig2 <> CAST(SUBSTRING(@valor, 11, 1) AS INT)
+			BEGIN
+				SET @error = 1
+				SET @error_message = 'CPF Inválido -' + ' ' + @Endereco + '.'
+				GOTO End_Of_ValidaCPFCNPJ
+			END
+		END
+	END
+	-- FIM VALIDA CPF NOS ENDEREÇOS
+	FETCH NEXT FROM ValidaCPFCNPJ INTO @CNPJ, @CPF, @Endereco, @IE, @cCountry
+END
+End_Of_ValidaCPFCNPJ:
+CLOSE ValidaCPFCNPJ
+DEALLOCATE ValidaCPFCNPJ
+IF @error <> 0
+BEGIN
+	GOTO End_Of_Block
+END
+-- FIM VALIDA CNPJ/CPF/IE NOS ENDEREÇOS
+
+END
+
+------------------------------------- FIM VALIDA CADASTRO DO PN --------------------------------------

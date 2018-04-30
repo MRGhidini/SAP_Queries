@@ -1,0 +1,10 @@
+IF(SELECT count(1) FROM  [dbo].[ODPI] T0, OINV T1
+					WHERE 
+						T1.CardCode = T0.CardCode And T1.DocEntry = @list_of_cols_val_tab_del and T1.DpmAmnt = 0 And
+						T0.[CANCELED] = 'N' AND T0.[DpmStatus] = 'O' AND T0.[DpmDrawn] = 'N' AND 
+						(T0.[Posted] = 'Y' AND T0.[PaidSum] <> 0 OR (T0.[Posted] = 'N' AND T0.[PaidSum] <> 0 AND T0.[DocStatus] = 'C'))
+					) > 0 
+					BEGIN
+						SET @error			= @erro
+						SET @error_message	= 'CLIENTE POSSUI ADIANTAMENTO(S) PAGO(S), VINCULE PELO MENOS UM A NOTA '
+					END

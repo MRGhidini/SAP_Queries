@@ -1,0 +1,132 @@
+---------------------------------- Início valida Nota de saida -----------------------------------
+IF(@object_type = '13')
+BEGIN
+ IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and (isnull(T0.TaxId0,'') = '' and isnull(T0.TaxId4,'') = '') and isnull(T0.CountryS,'') = 'BR') > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Preencher o CNPJ/CPF na Aba Impostos->Identific. fiscais.'
+    GOTO End_Of_Block
+ END
+
+IF(ISNULL((SELECT COUNT(*) FROM OINV T0 WHERE T0.DocEntry = @list_of_cols_val_tab_del 
+	AND T0.U_TIPOOP IN (SELECT T10.U_tipoop FROM [dbo].[@MODELOXOP] T10) 
+	AND ISNULL(T0.Model,'') NOT IN (SELECT T10.U_Model FROM [dbo].[@MODELOXOP] T10 WHERE T10.U_tipoop = T0.U_TIPOOP)),0) > 0)
+ BEGIN
+	SET @error = 1
+    SET @error_message = 'Modelo Incorreto para esta Operação, favor confirmar modelos possíveis em Adm. de Consultas->Contábil/Financeiro->21 - Modelo por Operação'
+    GOTO End_Of_Block
+ END
+
+ IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and (isnull(T0.TaxId0,'') <> '' and isnull(T0.TaxId1,'') = '') and isnull(T0.CountryS,'') = 'BR') > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Necessário preenchimento da Inscrição Estadual. Caso não possua, é necessário que seja preenchido com Isento.'
+    GOTO End_Of_Block
+ END
+
+ If (SELECT count('a') FROM OINV T1, INV1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.OcrCode,'') = '') > 0 
+ begin
+  SET @ERROR = 1
+  SET @ERROR_MESSAGE = 'Preencher centro de custo na Linha: ' + (SELECT ltrim(str(min(isnull(T0.VisOrder,0)+1))) FROM OINV T1, INV1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.OcrCode,'') = '')
+  GOTO End_Of_Block
+ end
+
+ If (SELECT count('a') FROM OINV T1, INV1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.Project,'') = '') > 0 
+ begin
+  SET @ERROR = 1
+  SET @ERROR_MESSAGE = 'Preencher código do projeto na Linha: ' + (SELECT ltrim(str(min(isnull(T0.VisOrder,0)+1))) FROM OINV T1, INV1 T0 WHERE T1.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and isnull(T0.Project,'') = '')
+  GOTO End_Of_Block
+ end
+
+/* --------------bloqueio CFOP para venda para consumo de Não contribuinte fora do estado---------
+ IF (select COUNT('a') from INV1 T0, OINV T1, OCRD T2, INV12 T3, OADM T4 where T3.DocEntry = T0.DocEntry and T1.DocEntry = T0.DocEntry and T1.CardCode = T2.CardCode and T0.DocEntry = @list_of_cols_val_tab_del and T2.GroupCode = 102 and isnull(T3.State,'') <> isnull(T4.State,'') and ISNULL(T3. ) > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Preencher código de imposto na linha: '+ltrim(str((select MAX(T0.Visorder)+1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '')))
+    GOTO End_Of_Block
+ END*/
+
+ IF (select COUNT('a') from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '') > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Preencher código de imposto na linha: '+ltrim(str((select MAX(T0.Visorder)+1 from INV1 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.TaxCode,'') = '')))
+    GOTO End_Of_Block
+ END
+ IF (select COUNT('a') from INV1 T3, INV4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('ICMS') AND isnull(T3.CSTCode,'') = '') > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Preencher CST para ICMS na linha: '+ltrim(str((select MAX(T3.Visorder)+1 from INV1 T3, INV4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('ICMS') AND isnull(T3.CSTCode,'') = '')))
+    GOTO End_Of_Block
+ END
+ 
+ IF (select COUNT('a') from INV1 T3, INV4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('PIS') AND isnull(T3.CSTfPIS,'') = '') > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Preencher CST para PIS na linha: '+ltrim(str((select MAX(T3.Visorder)+1 from INV1 T3, INV4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('PIS') AND isnull(T3.CSTfPIS,'') = '')))
+    GOTO End_Of_Block
+ END
+ IF (select COUNT('a') from INV1 T3, INV4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('COFINS') AND isnull(T3.CSTfCOFINS,'') = '') > 0
+ BEGIN
+    SET @error = 1
+    SET @error_message = 'Preencher CST para COFINS na linha: '+ltrim(str((select MAX(T3.Visorder)+1 from INV1 T3, INV4 T0, OSTT T1, ONFT T2 where T3.DocEntry = @list_of_cols_val_tab_del and T0.LineNum = T3.LineNum and T0.DocEntry = T3.Docentry and T1.AbsID = T0.staType and T2.AbsId = T1.NfTaxId and T2.Code in ('COFINS') AND isnull(T3.CSTfCOFINS,'') = '')))
+    GOTO End_Of_Block
+ END
+
+ If @transaction_type = 'A'
+ BEGIN
+  IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and ISNULL(T0.StateS,'') IN (SELECT T10.U_State FROM [dbo].[@ADD_AM_ZLC] T10) AND T0.CountyS IN (SELECT T10.U_id_Mun FROM [dbo].[@ADD_AM_ZLC] T10) AND isnull(T0.CountryS,'') = 'BR') > 0
+  BEGIN
+    IF(select COUNT('a') from OINV T0, INV12 T1 where T0.DocEntry = @list_of_cols_val_tab_del AND T0.DocEntry = T1.DocEntry AND ISNULL(T1.TaxId8,'') = '' AND ISNULL(T0.U_TIPOOP,'') NOT IN ('82','83')) > 0
+    BEGIN
+		SET @error = 1
+		SET @error_message = 'Cliente da Zona Franca ou Livre Comércio SEM Inscrição na SUFRAMA, favor cadastrar a SUFRAMA ou utilizar operações 82 ou 83.'
+		GOTO End_Of_Block
+    END
+    IF(select COUNT('a') from OINV T0, INV12 T1 where T0.DocEntry = @list_of_cols_val_tab_del AND T0.DocEntry = T1.DocEntry AND ISNULL(T1.TaxId8,'') <> '' AND ISNULL(T0.U_TIPOOP,'') NOT IN ('80','81')) > 0
+    BEGIN
+		SET @error = 1
+		SET @error_message = 'Cliente da Zona Franca ou Livre Comércio COM Inscrição na SUFRAMA, favor utilizar operações 80 ou 81.'
+		GOTO End_Of_Block
+    END
+  END
+  IF (select COUNT('a') from INV1 T0, OINV T1, INV12 T2, [dbo].[@DETOPNF_TIPOS] T3 where T0.DocEntry = @list_of_cols_val_tab_del 
+  and T1.DocEntry = T0.DocEntry and T2.DocEntry = T0.DocEntry and T3.Code = T1.U_TIPOOP AND ((T2.CountryS = 'BR' AND ISNULL(T3.U_pier_recn,'') <> '' and T0.AcctCode <> ISNULL(T3.U_pier_recn,'')) or (T2.CountryS <> 'BR' and ISNULL(T3.U_pier_rece,'') <> '' and T0.AcctCode <> ISNULL(T3.U_pier_rece,'')))) > 0
+  BEGIN
+     SET @error = 1
+     SET @error_message = 'Conta de Receita incorreta para o Tipo de Operação, Utilize campo Atualizar Receita? No canto Inferior Direito da Tela.'
+     GOTO End_Of_Block
+  END
+ IF (select COUNT('a') from INV1 T0, OINV T1, OCRD T2, OITM T3, INV12 T4, ONCM T5 where T0.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and T1.DocEntry = T4.DocEntry AND T1.CardCode = T2.CardCode AND T0.ItemCode = T3.ItemCode AND T2.GroupCode = '102' AND T3.ProductSrc IN ('2','4') AND T0.CFOPCode <> '6107' AND T4.StateS <> 'SP' AND ISNULL(T1.U_TIPOOP,'') IN ('01','02') AND T3.NCMCode = T5.AbsEntry AND T5.NcmCode NOT IN('2710.19.32','3403.99.00')) > 0
+  BEGIN
+     SET @error = 1
+     SET @error_message = 'Linha ' + LTRIM(STR((select ISNULL(MAX(T0.VisOrder),0)+1 from INV1 T0, OINV T1, OCRD T2, OITM T3, INV12 T4, ONCM T5 WHERE T0.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and T1.DocEntry = T4.DocEntry AND T1.CardCode = T2.CardCode AND T0.ItemCode = T3.ItemCode AND T2.GroupCode = '102' AND T3.ProductSrc IN ('2','4') AND T0.CFOPCode <> '6107' AND T4.StateS <> 'SP' AND ISNULL(T1.U_TIPOOP,'') IN ('01','02') AND T3.NCMCode = T5.AbsEntry AND T5.NcmCode NOT IN('2710.19.32','3403.99.00')))) + ': Trocar CFOP para 6107, Utilize campo Atualizar CFOP? No canto Inferior Direito da Tela.' 
+     GOTO End_Of_Block
+  END
+  IF (select COUNT('a') from INV1 T0, OINV T1, OCRD T2, OITM T3, INV12 T4, ONCM T5 where T0.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and T1.DocEntry = T4.DocEntry AND T1.CardCode = T2.CardCode AND T0.ItemCode = T3.ItemCode AND T2.GroupCode = '102' AND T3.ProductSrc IN ('1','3') AND T0.CFOPCode <> '6108' AND T4.StateS <> 'SP' AND ISNULL(T1.U_TIPOOP,'') IN ('01','02') AND T3.NCMCode = T5.AbsEntry AND T5.NcmCode NOT IN('2710.19.32','3403.99.00')) > 0
+  BEGIN
+     SET @error = 1
+     SET @error_message = 'Linha ' + LTRIM(STR((select ISNULL(MAX(T0.VisOrder),0)+1 from INV1 T0, OINV T1, OCRD T2, OITM T3, INV12 T4, ONCM T5 where T0.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and T1.DocEntry = T4.DocEntry AND T1.CardCode = T2.CardCode AND T0.ItemCode = T3.ItemCode AND T2.GroupCode = '102' AND T3.ProductSrc IN ('1','3') AND T0.CFOPCode <> '6108' AND T4.StateS <> 'SP' AND ISNULL(T1.U_TIPOOP,'') IN ('01','02') AND T3.NCMCode = T5.AbsEntry AND T5.NcmCode NOT IN('2710.19.32','3403.99.00')))) + ': Trocar CFOP para 6108, Utilize campo Atualizar CFOP? No canto Inferior Direito da Tela.'
+     GOTO End_Of_Block
+  END
+ END
+ --Controle do CFOP para Graxa e Combustível
+ IF (select COUNT('a') from INV1 T0, OINV T1, OITM T3, INV12 T4, ONCM T5 where T0.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and T1.DocEntry = T4.DocEntry AND T0.ItemCode = T3.ItemCode AND T0.CFOPCode <> '5656' AND T4.State = 'SP' AND T3.NCMCode = T5.AbsEntry AND T5.NcmCode IN('2710.19.32','3403.99.00')) > 0
+  BEGIN
+     SET @error = 1
+     SET @error_message = 'Linha ' + LTRIM(STR((select ISNULL(MAX(T0.VisOrder),0)+1 from INV1 T0, OINV T1, OITM T3, INV12 T4, ONCM T5 
+     where T0.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and T1.DocEntry = T4.DocEntry AND T0.ItemCode = T3.ItemCode AND 
+     T0.CFOPCode <> '5656' AND T4.State = 'SP' AND T3.NCMCode = T5.AbsEntry AND T5.NcmCode IN('2710.19.32','3403.99.00')))) 
+     + ': Trocar CFOP para 5656, Utilize campo Atualizar CFOP? No canto Inferior Direito da Tela.' 
+     GOTO End_Of_Block
+  END
+  IF (select COUNT('a') from INV1 T0, OINV T1, OITM T3, INV12 T4, ONCM T5 where T0.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and T1.DocEntry = T4.DocEntry AND T0.ItemCode = T3.ItemCode AND T0.CFOPCode <> '6656' AND T4.State <> 'SP' AND T3.NCMCode = T5.AbsEntry AND T5.NcmCode IN('2710.19.32','3403.99.00')) > 0
+  BEGIN
+     SET @error = 1
+     SET @error_message = 'Linha ' + LTRIM(STR((select ISNULL(MAX(T0.VisOrder),0)+1 from INV1 T0, OINV T1, OITM T3, INV12 T4, ONCM T5 
+     where T0.DocEntry = @list_of_cols_val_tab_del and T1.DocEntry = T0.DocEntry and T1.DocEntry = T4.DocEntry AND T0.ItemCode = T3.ItemCode AND 
+     T0.CFOPCode <> '6656' AND T4.State <> 'SP' AND T3.NCMCode = T5.AbsEntry AND T5.NcmCode IN('2710.19.32','3403.99.00')))) 
+     + ': Trocar CFOP para 6656, Utilize campo Atualizar CFOP? No canto Inferior Direito da Tela.' 
+     GOTO End_Of_Block
+  END
+END
+---------------------------------- Fim valida Nota de saída -----------------------------------

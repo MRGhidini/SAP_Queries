@@ -1,0 +1,6 @@
+  IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND ((isnull(T0.InvntItem,'') = 'Y' AND T0.GLMethod = 'C') or (isnull(T0.InvntItem,'') = 'N' AND T0.GLMethod = 'W')) ) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Se Item de Estoque, selecione a opção "Definir contas contábeis por Depósito ou Nível do Item". Senão, selecione por Grupo de Itens'
+        GOTO End_Of_Block
+  END

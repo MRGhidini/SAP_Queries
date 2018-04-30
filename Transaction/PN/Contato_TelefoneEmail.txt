@@ -1,0 +1,34 @@
+-- CONTATO PRINCIPAL
+/*IF (SELECT COUNT(*) FROM OCPR T0 WHERE T0.CardCode = @list_of_cols_val_tab_del) = 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Contato não informado.'
+	GOTO End_Of_Block
+END
+ELSE
+BEGIN
+
+-- TELEFONE DO CONTATO
+IF (SELECT ISNULL(Tel1, '') FROM OCRD T0, OCPR T1 WHERE T0.CardCode = T1.CardCode AND T0.CntctPrsn = T1.Name AND T1.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Telefone do contato não informado.'
+	GOTO End_Of_Block
+END
+
+-- DDD DO CONTATO
+IF (SELECT ISNULL(Tel2, '') FROM OCRD T0, OCPR T1 WHERE T0.CardCode = T1.CardCode AND T0.CntctPrsn = T1.Name AND T1.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'DDD do contato não informado.'
+	GOTO End_Of_Block
+END
+
+-- E-MAIL DO CONTATO
+IF (SELECT ISNULL(E_MailL, '') FROM OCRD T0, OCPR T1 WHERE T0.CardCode = T1.CardCode AND T0.CntctPrsn = T1.Name AND T1.CardCode = @list_of_cols_val_tab_del) = ''
+BEGIN
+	SET @error = 1
+	SET @error_message = 'E-mail do contato não informado.'
+	GOTO End_Of_Block
+END
+END

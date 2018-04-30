@@ -1,0 +1,7 @@
+-- BLOQUEIO PARA O PREENCHIMENTO DO CAMPO TIPO DO MATERIAL PRODUTO ACABADO E PRODUÇÃO PROPRIA
+IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.ItemClass = 2 AND ISNULL(T0.MatType,0) <> 1 AND ISNULL(T0.ProductSrc,0) = 4 AND ISNULL(T0.MatType,0) <> 1) > 0 
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Quando a Fonte do Produto é Produção Própria, Tipo de Material deve ser 1-Produtos acabados'
+	GOTO End_Of_Block
+END

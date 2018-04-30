@@ -1,0 +1,6 @@
+  IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND (T0.InvntItem = 'Y' AND T0.EvalSystem <> 'A')) > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Se Item de Estoque, o método de avaliação deve ser "Preço médio móvel"'
+        GOTO End_Of_Block
+  END

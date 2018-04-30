@@ -1,0 +1,8 @@
+IF(ISNULL((SELECT COUNT(*) FROM OINV T0 WHERE T0.DocEntry = @list_of_cols_val_tab_del 
+		AND T0.U_TIPOOP IN (SELECT T10.U_tipoop FROM [dbo].[@MODELOXOP] T10) 
+		AND ISNULL(T0.Model,'') NOT IN (SELECT T10.U_Model FROM [dbo].[@MODELOXOP] T10 WHERE T10.U_tipoop = T0.U_TIPOOP)),0) > 0)
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Modelo Incorreto para esta Operação, favor confirmar modelos possíveis em Adm. de Consultas->Contábil/Financeiro->21 - Modelo por Operação'
+	GOTO End_Of_Block
+END

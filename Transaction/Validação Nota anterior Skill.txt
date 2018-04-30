@@ -1,0 +1,38 @@
+IF @object_type IN ('13', '14', '15', '16', '18', '19', '20', '21')
+Begin
+	Declare @Serial Numeric, @Seq Numeric
+	Select Top 1 @Seq = T10.SeqCode, 
+		@Serial = -1 + T10.Serial From (Select T11.Serial, T11.SeqCode From OINV T11 Where T11.ObjType = @object_type and T11.DocEntry = @list_of_cols_val_tab_del Union All
+										Select T11.Serial, T11.SeqCode From ORIN T11 Where T11.ObjType = @object_type and T11.DocEntry = @list_of_cols_val_tab_del Union All
+										Select T11.Serial, T11.SeqCode From ODLN T11 Where T11.ObjType = @object_type and T11.DocEntry = @list_of_cols_val_tab_del Union All
+										Select T11.Serial, T11.SeqCode From ORDN T11 Where T11.ObjType = @object_type and T11.DocEntry = @list_of_cols_val_tab_del Union All
+										Select T11.Serial, T11.SeqCode From OPCH T11 Where T11.ObjType = @object_type and T11.DocEntry = @list_of_cols_val_tab_del Union All
+										Select T11.Serial, T11.SeqCode From ORPC T11 Where T11.ObjType = @object_type and T11.DocEntry = @list_of_cols_val_tab_del Union All
+										Select T11.Serial, T11.SeqCode From OPDN T11 Where T11.ObjType = @object_type and T11.DocEntry = @list_of_cols_val_tab_del Union All
+										Select T11.Serial, T11.SeqCode From ORPD T11 Where T11.ObjType = @object_type and T11.DocEntry = @list_of_cols_val_tab_del) T10
+									
+
+	IF(@Seq in (39))
+	Begin
+		If(Select COUNT(1)
+				From [@SKL25NFE] 
+				Inner join(
+							Select T11.DocEntry, T11.ObjType, T11.SeqCode From OINV T11 Union All
+							Select T11.DocEntry, T11.ObjType, T11.SeqCode From ORIN T11 Union All
+							Select T11.DocEntry, T11.ObjType, T11.SeqCode From ODLN T11 Union All
+							Select T11.DocEntry, T11.ObjType, T11.SeqCode From ORDN T11 Union All
+							Select T11.DocEntry, T11.ObjType, T11.SeqCode From OPCH T11 Union All
+							Select T11.DocEntry, T11.ObjType, T11.SeqCode From ORPC T11 Union All
+							Select T11.DocEntry, T11.ObjType, T11.SeqCode From OPDN T11 Union All
+							Select T11.DocEntry, T11.ObjType, T11.SeqCode From ORPD T11 
+				) T1 On T1.DocEntry = U_DocEntry and T1.ObjType = Case U_TipoDocumento When 'DE' Then 19 When 'DM' Then 21 When 'DT' Then 16 When 'EM' Then 15 
+																	When 'NE' Then 18 When 'NS' Then 13 When 'RM' Then 20 When 'DN' Then 14 End
+				Where U_ChaveAcesso is not null and U_Recibo is not null
+				AND cast(SUBSTRING(U_ChaveAcesso, 26, 9) as numeric) = @Serial
+				And T1.SeqCode = @Seq) = 0
+		Begin
+			SET @error			= @erro
+			SET @error_message	= 'NOTA ANTERIOR NÃO FOI ENVIADA PARA O SEFAZ, OU NÃO SE ENCONTRA NO SAP RECIBO DE ENVIO'
+		End
+	End
+End

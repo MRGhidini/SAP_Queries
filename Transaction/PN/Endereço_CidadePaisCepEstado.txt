@@ -1,0 +1,141 @@
+DECLARE ValidaEndereco CURSOR FOR
+SELECT T0.Address, T0.AddrType, T0.Street, T0.StreetNo, T0.Building, T0.ZipCode, T0.Block, T0.City, T0.State, T0.County, T0.AdresType, T0.Country FROM CRD1 T0 WHERE T0.CardCode = @list_of_cols_val_tab_del AND (T0.AdresType = 'B' OR T0.AdresType = 'S')
+OPEN ValidaEndereco
+FETCH NEXT FROM ValidaEndereco INTO @cAddress, @cAddrType, @cStreet, @cStreetNo, @cBuilding, @cZipCode, @cBlock, @cCity, @cState, @cCounty, @cAdresType, @cCountry
+WHILE @@FETCH_STATUS = 0 
+BEGIN
+	IF ISNULL(@cAdresType, '') = 'B'
+	BEGIN
+		SET @cTypeDescr = 'Endereço de cobrança/pagamento'
+	END
+	ELSE -- 'S'
+	BEGIN
+		SET @cTypeDescr = 'Destinatário'
+	END
+
+	IF ISNULL(@cAddrType, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo Tipo de Logradouro (Rua, Av, Praça, etc.) do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+		GOTO End_Of_ValidaEndereco
+	END
+
+	IF ISNULL(@cStreet, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo Logradouro do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+		GOTO End_Of_ValidaEndereco
+	END
+
+	IF ISNULL(@cStreetNo, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo Número do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+		GOTO End_Of_ValidaEndereco
+	END
+
+	IF ISNULL(@cZipCode, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo CEP do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+		GOTO End_Of_ValidaEndereco
+	END
+
+	IF ISNULL(@cCountry, '') = 'BR' AND (LEN(@cZipCode) < 8 OR LEN(@cZipCode) > 9)
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo CEP do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'está incorreto.'
+		GOTO End_Of_ValidaEndereco
+	END
+
+	IF ISNULL(@cCountry, '') = 'BR' AND LEN(@cZipCode) = 9 AND
+	   (Ascii(Substring(@cZipCode,1,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,2,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,3,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,4,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,5,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,6,1)) <> 45 OR
+		Ascii(Substring(@cZipCode,7,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,8,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,9,1)) NOT BETWEEN 48 AND 57)
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo CEP do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'está incorreto.'
+		GOTO End_Of_ValidaEndereco
+	END
+
+	IF ISNULL(@cCountry, '') = 'BR' AND LEN(@cZipCode) = 8 AND
+	   (Ascii(Substring(@cZipCode,1,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,2,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,3,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,4,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,5,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,6,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,7,1)) NOT BETWEEN 48 AND 57 OR
+		Ascii(Substring(@cZipCode,8,1)) NOT BETWEEN 48 AND 57)
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo CEP do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'está incorreto.'
+		GOTO End_Of_ValidaEndereco
+	END
+
+	IF ISNULL(@cBlock, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo Bairro do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+		GOTO End_Of_ValidaEndereco
+	END
+		
+	IF ISNULL(@cState, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo Estado do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+		GOTO End_Of_ValidaEndereco
+	END
+		
+	IF ISNULL(@cState, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+		BEGIN
+ 			SET @error = 1
+ 			SET @error_message = 'O campo Estado do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+ 			GOTO End_Of_ValidaEndereco
+		END
+
+	IF ISNULL(@cCounty, '') = '' AND ISNULL(@cCountry, '') = 'BR'
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O campo Município do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'deve ser informado.'
+		GOTO End_Of_ValidaEndereco
+	END
+
+	IF LEN(@cStreetNo) > 60
+		BEGIN
+ 			SET @error = 1
+ 			SET @error_message = 'O Campo Número do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'permiti no máximo 60 caracteres.'
+ 			GOTO End_Of_ValidaEndereco
+		END
+
+	IF LEN(@cBuilding) > 60
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O Campo Complemento do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'permiti no máximo 60 caracteres.'
+		GOTO End_Of_ValidaEndereco
+	END
+
+	IF LEN(@cBlock) > 60
+	BEGIN
+		SET @error = 1
+		SET @error_message = 'O Campo Bairro do' + ' ' + @cTypeDescr + ' ' + '(' + @cAddress + ')' + ' ' + 'permiti no máximo 60 caracteres.'
+		GOTO End_Of_ValidaEndereco
+	END    
+
+	FETCH NEXT FROM ValidaEndereco INTO @cAddress, @cAddrType, @cStreet, @cStreetNo, @cBuilding, @cZipCode, @cBlock, @cCity, @cState, @cCounty, @cAdresType, @cCountry
+	END
+	End_Of_ValidaEndereco:
+	CLOSE ValidaEndereco
+	DEALLOCATE ValidaEndereco
+	IF @error <> 0
+	BEGIN
+		GOTO End_Of_Block
+	END
+END
+-- FIM VALIDA ENDEREÇO

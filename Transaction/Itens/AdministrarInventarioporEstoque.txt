@@ -1,0 +1,7 @@
+-- BLOQUEIO PARA O PREENCHIMENTO DO FLAG ADMINISTRAR INVENTÁRIO POR DEPÓSITO
+  IF(SELECT COUNT(*) FROM OITM T0 WHERE T0.ItemCode = @list_of_cols_val_tab_del AND T0.InvntItem = 'Y' AND T0.ByWh = 'N') > 0 
+  BEGIN
+        SET @error = 1
+        SET @error_message = 'Selecione a opção "Administrar inventário por depósito" na aba inventário.'
+        GOTO End_Of_Block
+  END

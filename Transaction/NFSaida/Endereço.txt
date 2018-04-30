@@ -1,0 +1,19 @@
+-----  Informações de Endereço ------
+IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CountryS,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher País no endereço de entrega na Aba Imposto'
+	GOTO End_Of_Block
+END
+IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.StateS,'') = '') > 0
+BEGIN
+	SET @error = 1
+	SET @error_message = 'Preencher Estado no endereço de entrega na Aba Logistica'
+	GOTO End_Of_Block
+END
+IF (select COUNT('a') from INV12 T0 where T0.DocEntry = @list_of_cols_val_tab_del and isnull(T0.CountyS,'') = '') > 0
+BEGIN
+	SET @error = 2
+	SET @error_message = 'Preencher Cidade no endereço de entrega na Aba Logistica'
+	GOTO End_Of_Block
+END

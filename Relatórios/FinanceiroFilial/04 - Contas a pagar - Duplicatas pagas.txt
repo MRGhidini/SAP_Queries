@@ -1,0 +1,102 @@
+/*Contas a pagar - Duplicatas pagas*/
+
+
+
+
+
+
+/* SELECT 1 FROM [dbo].[OVPM] T7 WHERE T7.DocDate >= '[%0]' And T7.DocDate <= '[%1]' */
+declare @DataInicial datetime, @DataFinal datetime
+set @DataInicial = ''--'[%0]'
+set @DataFinal = ''--'[%1]'
+
+SELECT
+	T9.BPLName 'Filial',
+	T0.DocNum '# Doc. Entrada.',
+	LTRIM(STR(T1.Serial)) 'NF/Detalhes', 
+	T1.CardCode 'Código', 
+	T1.CardName 'Fornecedor', 
+	T2.DueDate 'Data de vencimento', 
+	T3.DocDate 'Data do pagamento', 
+	T0.SumApplied 'Valor a pagar', 
+	T3.DocTotal*((T0.SumApplied*100)/(SELECT SUM(T4.SumApplied) FROM VPM2 T4 WHERE T4.DocNum = T3.DocNum)/100) 'Valor pago'
+FROM 
+	VPM2 T0
+	Inner join OVPM T3 On T3.DocNum =  T0.DocNum
+	Inner join PCH6 T2 On T2.DocEntry = T0.DocEntry And T2.InstlmntID = T0.InstId 
+	Inner join OPCH T1 On T1.DocEntry = T2.DocEntry
+	Left Join OBPL T9 On T9.BPLId = T3.BPLId
+WHERE 
+	T0.InvType = 18 And 
+	T3.Canceled <> 'Y' And 
+	T3.DocDate >= @DataInicial And T3.DocDate <= @DataFinal 
+
+UNION all
+
+SELECT 
+	T9.BPLName 'Filial',
+	T0.DocNum, 
+	LTRIM(STR(T1.TransId))+' - '+ LTRIM(STR(T2.Line_ID+1)) +ISNULL(' - '+T2.LineMemo,''), 
+	T3.CardCode, 
+	T3.CardName, 
+	T2.DueDate, 
+	T3.DocDate, 
+	T0.SumApplied 'ValOr a pagar', 
+	T3.DocTotal*((T0.SumApplied*100)/(SELECT SUM(T4.SumApplied) FROM VPM2 T4 WHERE T4.DocNum = T3.DocNum)/100) 'ValOr pago'
+FROM 
+	VPM2 T0
+	Inner join OVPM T3 On T3.DocNum =  T0.DocNum
+	Inner join JDT1 T2 On T2.Line_ID = T0.DocLine And T2.TransId = T0.DocEntry 
+	Inner join OJDT T1 On T1.TransId= T2.TransId 
+	Left Join OBPL T9 On T9.BPLId = T3.BPLId
+WHERE  
+	T0.InvType = 30 And 
+	T3.Canceled <> 'Y' And 
+	T3.DocDate >= @DataInicial And T3.DocDate <=@DataFinal And 
+	(ISNULL(
+			(SELECT 
+				COUNT(*) 
+			 FROM 
+				OITR T10, ITR1 T20 
+			 WHERE 
+				T10.ReconNum = T20.ReconNum And 
+				T20.[TransId] = T2.TransId And 
+				ISNULL(T20.[TransRowId],0) = ISNULL(T2.[Line_ID],0)),0)  <> 0 
+	Or 
+	ISNULL(T2.ExtrMatch,'') <> '' Or 
+	ISNULL(T2.MultMatch,'') <> '')
+
+union all
+
+SELECT 
+	T9.BPLName 'Filial',
+	T0.DocNum, 
+	LTRIM(STR(T1.TransId))+' - '+ ISNULL(' - '+T2.LineMemo,''), 
+	T0.AcctCode, 
+	T0.AcctName, 
+	T2.DueDate, 
+	T3.DocDate, 
+	T0.SumApplied 'ValOr a pagar', 
+	T3.DocTotal*((T0.SumApplied*100)/(SELECT SUM(T4.SumApplied) FROM VPM4 T4 WHERE T4.DocNum = T3.DocNum)/100) 'ValOr pago'
+FROM 
+	VPM4 T0
+	Inner join OVPM T3 On T3.DocNum =  T0.DocNum 
+	Inner join JDT1 T2 On T2.Account = T0.AcctCode And T2.TransId = T3.TransId
+	Inner join OJDT T1 On T1.TransId= T2.TransId
+	Left Join OBPL T9 On T9.BPLId = T3.BPLId
+WHERE 
+T3.Canceled <> 'Y' And 
+T3.DocDate >= @DataInicial And T3.DocDate <=@DataFinal And 
+(ISNULL(
+		(SELECT 
+			COUNT(*) 
+		 FROM 
+			OITR T10, ITR1 T20 
+		 WHERE 
+			T10.ReconNum = T20.ReconNum And 
+			T20.[TransId] = T2.TransId And 
+			ISNULL(T20.[TransRowId],0) = ISNULL(T2.[Line_ID],0)),0)  <> 0 Or 
+			ISNULL(T2.ExtrMatch,'') <> '' Or 
+			ISNULL(T2.MultMatch,'') <> '') 
+Group By 
+	T9.BplName, T0.AcctCode, T0.AcctName, T0.DocNum, T1.TransId, T2.LineMemo, T2.DueDate, T3.DocDate, T0.SumApplied, T3.DocNum, T3.DocTotal
