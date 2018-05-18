@@ -1,0 +1,161 @@
+Create by MRGhidini
+Date 18/05/2018
+
+
+SELECT 
+	RefDate 'Emissao',
+    DueDate 'Vencimento',
+    ShortName 'CardCode',
+    RELAT.CardName, 
+    CASE WHEN OSLP.SlpName <> 'DIRETAS' THEN OSLP.SlpName
+		 WHEN OSLP.SlpName = 'DIRETAS' AND OCRD.AgentCode <> '# nenhum representante' THEN OCRD.AgentCode
+    ELSE 'DIRETAS' END VendedorCadPN,       
+	GroupName 'Grupo',
+	ISNULL(Comments, '') 'Observacoes',
+	ISNULL(Nota, '') 'NF',
+	CreatedBy 'Cod.SAP',
+	RELAT.SlpName 'Vendedor',
+	FormaPgto 'FormaPgto',
+	ISNULL(Line_ID, 0)+1 'Parcela',
+	ISNULL(Installmnt, 1) 'TotalDeParcelas',
+	sum(Valor) 'ValorParcela', sum(Recebido) 'Recebido', 
+	ROUND(sum(Valor-Recebido),2)	'AReceber',
+	sum(ValorFC) 'ValorFC',
+	sum(RecebidoFC) 'RecebidoFC',
+	ROUND(sum(ValorFC-RecebidoFC),2) 'AReceberFC',ISNULL(MoedaEstrangeira,'') 'Moeda Estrangeira',
+	CASE 
+		WHEN TransType = 13 THEN 'NFS'
+		WHEN TransType = 14 THEN 'Dev.NFS'
+		WHEN TransType = 30 THEN 'LCM'
+		WHEN TransType = 24 THEN 'BOL'
+		ELSE 'Outros' 
+	END 'Tipo Transacao',
+	Isnull(ObsCRC, '') ObsCRC,
+	RELAT.Filial 'Filial',
+	RELAT.[ID Filial] 'ID Filial',
+	RELAT.ObsMemo,
+	RELAT.ID_LCM 
+FROM
+(Select T31.GroupName,
+        isnull(t7.Comments,(select max(isnull(T44.Comments,'')) comments
+                            from rct2 t43
+                            inner join  orct t44 on t44.docentry=t43.docnum
+                            where t43.docline=t0.line_id and t43.docentry=t1.createdby and t1.transtype=13)) 'ObsCRC',
+        ISNULL(T5.Comments, T6.Comments) 'Comments',
+        ISNULL((Case When (ISNULL(T5.DocCur, ISNULL(T6.DocCur,ISNULL(T1.TransCurr,'R$'))))='' then 'R$' end),ISNULL(T5.DocCur, ISNULL(T6.DocCur,T1.TransCurr))) 'MoedaEstrangeira',
+        ISNULL(ISNULL(CAST(T5.Installmnt as nvarchar(100)), ISNULL(CAST(T6.Installmnt as nvarchar(100)),
+        (SELECT TOP 1 X0.Installmnt from OINV X0 INNER JOIN RCT2 X1 ON X0.DocEntry = X1.DocEntry and X1.InvType = 13 WHERE X1.DocNum = T1.CreatedBy and T1.TransType = 24))),
+		ISNULL((SELECT TOP 1 X0.Ref1 from OJDT X0 INNER JOIN RCT2 X1 ON X0.TransId = X1.DocEntry and X1.InvType = 30 WHERE X1.DocNum = T1.CreatedBy and T1.TransType = 24),T1.Ref1)) 'Installmnt',
+        ISNULL(T40.SlpName, ISNULL(T41.SlpName, T42.SlpName)) 'SlpName',
+        T2.AcctCode,
+        T0.Line_ID,
+        T1.TransType,
+        T1.CreatedBy,
+        (T0.Debit-T0.Credit) 'Valor',
+        ISNULL	(CASE WHEN T1.TransType = 24 THEN T30.Rate WHEN (T0.FCDebit+T0.FCCredit) <> 0 THEN (T0.Debit+T0.Credit)/(T0.FCDebit+T0.FCCredit) ELSE 0 END, 0) 'Taxa',
+        (T0.FCDebit-T0.FCCredit) 'ValorFC',
+        T0.FCCurrency, 
+        ISNULL(sum((CASE WHEN T10.ReconNum IS NULL THEN 0 WHEN T4.IsCredit = 'D' THEN T4.ReconSumFC WHEN T4.IsCredit = 'C' THEN T4.ReconSumFC*-1 END)),0) 'RecebidoFC',
+        ISNULL(sum((CASE WHEN T10.ReconNum IS NULL THEN 0 WHEN T4.IsCredit = 'D' THEN T4.ReconSum   WHEN T4.IsCredit = 'C' THEN T4.ReconSum*-1  END)),0) 'Recebido',
+        T0.ShortName,
+        T3.CardName,
+        T0.DueDate,
+        T1.RefDate,
+        T1.CreateDate,
+        ISNULL(ISNULL(CAST(T5.Serial as nvarchar(100)),
+        ISNULL(CAST(T6.Serial as nvarchar(100)),
+        (SELECT TOP 1 X0.Serial from OINV X0 INNER JOIN RCT2 X1 ON X0.DocEntry = X1.DocEntry and X1.InvType = 13 WHERE X1.DocNum = T1.CreatedBy and T1.TransType = 24))),
+		ISNULL((SELECT TOP 1 X0.Ref1 from OJDT X0 INNER JOIN RCT2 X1 ON X0.TransId = X1.DocEntry and X1.InvType = 30 WHERE X1.DocNum = T1.CreatedBy and T1.TransType = 24),T1.Ref1)) 'Nota',
+        ISNULL(T8.OurNum, '') 'Número do Boleto',
+		ISNULL(T20.Descript, T21.Descript) 'FormaPgto',
+		T43.BPLId 'ID Filial',
+		T43.BPLName 'Filial',
+		T1.Memo 'ObsMemo',
+		T0.TransId as 'ID_LCM'
+ from JDT1 T0 
+ INNER JOIN OJDT T1 ON T0.TransId = T1.TransId
+ INNER JOIN OACT T2 ON T0.Account = T2.AcctCode
+ INNER JOIN OCRD T3 ON T0.ShortName = T3.CardCode
+ INNER JOIN OCRG T31 ON T3.GroupCode = T31.GroupCode			
+ LEFT JOIN ITR1 T4 ON T1.TransType = T4.SrcObjTyp and T1.CreatedBy = T4.SrcObjAbs and T0.Line_ID = T4.TransRowId and T0.TransId = T4.TransId
+ LEFT JOIN OITR T10 ON T4.ReconNum = T10.ReconNum AND (T10.ReconDate <= @DataBase or (SELECT X0.ReconDate FROM OITR X0 WHERE X0.ReconNum = T10.CancelAbs) <= @DataBase)
+ LEFT JOIN OINV T5 ON T1.CreatedBy = T5.DocEntry and T1.TransType = 13
+ LEFT JOIN ORIN T6 ON T1.CreatedBy = T6.DocEntry and T1.TransType = 14
+ LEFT JOIN ORCT T7 ON T1.CreatedBy = T7.DocNum and T1.TransType = 24
+ LEFT JOIN OBOE T8 ON T7.BoeAbs = T8.BoeKey And T8.BoeStatus In ('G', 'S', 'D', 'F')
+ LEFT JOIN OPYM T20 ON T5.PeyMethod = T20.PayMethCod
+ LEFT JOIN OPYM T21 ON T8.PayMethCod = T21.PayMethCod
+ LEFT JOIN ORTT T30 ON T30.Currency = T0.FCCurrency and T30.RateDate = cast(floor(cast(GETDATE() as float)) as datetime) -- Cotacao do dia
+ LEFT JOIN OSLP T40 ON T40.SlpCode = T5.SlpCode
+ LEFT JOIN OSLP T41 ON T41.SlpCode = T6.SlpCode
+ LEFT JOIN OSLP T42 ON T42.SlpCode = T3.SlpCode
+ LEFT JOIN OBPL T43 ON T43.BPLId = ISNULL(T0.BPLId,1)
+
+ WHERE T2.LocManTran = 'Y' and T3.CardType = 'C' and (T1.RefDate is null or T1.RefDate <= @DataBase) AND T43.BPLId = CASE WHEN @FILIAL2 = 0 THEN T43.BPLId ELSE @FILIAL2 END --IN (1,2,3,4,5)--{?filial@SELECT BPLId,BPLName FROM OBPL}
+ GROUP BY --T44.Comments,
+          T31.GroupName,
+          T5.Installmnt,
+          T6.Installmnt,
+          T7.Comments,
+          ISNULL(T5.Comments, T6.Comments),
+          ISNULL(T40.SlpName,
+          ISNULL(T41.SlpName, T42.SlpName)),
+          T2.AcctCode,
+          T0.Line_ID,
+          T1.TransType,
+          T1.CreatedBy,
+          (T0.Debit-T0.Credit),
+          T30.Rate,
+          (T0.FCDebit+T0.FCCredit),
+          (T0.Debit+T0.Credit),
+          (T0.FCDebit-T0.FCCredit),
+          T0.FCCurrency,
+	      T0.ShortName,
+	      T3.CardName,
+	      T0.DueDate,
+	      ISNULL((Case When (ISNULL(T5.DocCur, ISNULL(T6.DocCur,ISNULL(T1.TransCurr,'R$'))))='' then 'R$' end),ISNULL(T5.DocCur, ISNULL(T6.DocCur,T1.TransCurr))),
+	      T1.RefDate,
+	      T1.CreateDate,
+	      T5.Serial,
+	      T6.Serial,
+	      T1.Ref1,
+	      T8.OurNum,
+	      ISNULL(T20.Descript, T21.Descript),
+	      T43.BPLId,
+		  T43.BPLName,
+		  T1.Memo,
+		  T0.TransId
+) RELAT
+INNER JOIN OCRD ON RELAT.ShortName = OCRD.CardCode
+LEFT JOIN OSLP ON OSLP.SlpCode = OCRD.SlpCode  
+WHERE ((FCCurrency IS NOT NULL AND LTRIM(FCCurrency) <> '' AND ValorFC <> RecebidoFC) or Valor <> Recebido) 
+And TransType <> 321
+and TransType in (13,14,30,24)
+and  DueDate BETWEEN @DataIni and @DataFim
+and RELAT.[ID Filial] = CASE WHEN @FILIAL2 = 0 THEN RELAT.[ID Filial] ELSE @FILIAL2 END --(1,2,3,4,5)
+GROUP BY Nota,
+         Installmnt,
+         Line_ID,
+         GroupName,
+         RELAT.SlpName,
+         OSLP.SlpName,
+         OCRD.AgentCode,
+         OBSCRC,
+         Comments,
+         Taxa,
+         AcctCode,
+         TransType,
+         CreatedBy,
+         ShortName,
+         RELAT.CardName,
+         CardFName,
+         DueDate,[Número do Boleto],
+         TransType,
+         FormaPgto,
+         RefDate,
+         RELAT.CreateDate, 
+         MoedaEstrangeira,
+         RELAT.Filial,
+		 RELAT.[ID Filial],
+		 RELAT.ObsMemo,
+		 RELAT.ID_LCM 
