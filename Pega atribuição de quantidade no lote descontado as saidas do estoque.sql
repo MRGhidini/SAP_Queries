@@ -19,4 +19,6 @@ WHERE IBT1.BaseType IN(17) and Direction = 2   AND IBT1.BaseEntry IN (SELECT Doc
  GROUP BY IBT1.ItemCode, IBT1.BatchNum, IBT1.BaseEntry
  ) AA  GROUP BY AA.ItemCode, AA.BatchNum, AA.DocEntry
  
+ --IBT1 é uma view da SAP que vem no B1
+ 
 
